@@ -22,7 +22,7 @@ jobs:
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r backend/requirements.txt pytest httpx
+        pip install -r backend/requirements.txt pytest httpx greenlet
 
     - name: Run Backend Pytest Suite
       env:
