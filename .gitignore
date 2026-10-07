@@ -1,0 +1,26 @@
+# Python Cache & Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+venv/
+.venv/
+env/
+
+# Database
+*.db
+*.sqlite3
+jinny_memory.db
+
+# Android Build & Gradle
+.gradle/
+build/
+*.apk
+*.aab
+local.properties
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
