@@ -1,14 +1,14 @@
 """
 Jinny Core - Persistent Cognitive Memory & Context Management
-Engineered by Eng. Yousuf Albaz
+Engineered by Yousuf Albaz
 """
 
 import json
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, String, Text, DateTime, Float
 from config import settings
 
@@ -20,7 +20,7 @@ class MemoryRecord(Base):
     __tablename__ = "cognitive_memory"
     
     id = Column(Integer, primary_key=True, index=True)
-    category = Column(String(50), index=True) # user_profile, preference, event, routine, device_state
+    category = Column(String(50), index=True)
     key = Column(String(100), index=True)
     value = Column(Text, nullable=False)
     confidence = Column(Float, default=1.0)
@@ -30,8 +30,8 @@ class MemoryRecord(Base):
 class PersistentMemoryStore:
     def __init__(self, db_url: str = settings.DATABASE_URL):
         self.engine = create_async_engine(db_url, echo=settings.DEBUG)
-        self.async_session = sessionmaker(
-            self.engine, expire_on_commit=False, class_=AsyncSession
+        self.async_session = async_sessionmaker(
+            self.engine, expire_on_commit=False
         )
 
     async def initialize(self):
@@ -43,7 +43,6 @@ class PersistentMemoryStore:
         async with self.async_session() as session:
             serialized_val = json.dumps(value, ensure_ascii=False) if not isinstance(value, str) else value
             
-            # Check existing
             from sqlalchemy import select
             q = select(MemoryRecord).where(MemoryRecord.category == category, MemoryRecord.key == key)
             res = await session.execute(q)
