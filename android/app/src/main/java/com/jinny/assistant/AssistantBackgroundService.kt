@@ -10,6 +10,7 @@ import android.content.SharedPreferences
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.speech.tts.TextToSpeech
 import android.telephony.SmsManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -19,15 +20,17 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.WebSocket
 import java.nio.ByteBuffer
+import java.util.Locale
 import java.util.concurrent.CompletionStage
 import kotlin.math.min
 
 /**
  * Jinny Core - Android Background Orchestration Daemon
- * Production-ready: Battery-conscious Wakelock, WebSocket Telemetry, and SMS Delivery Loop.
+ * Production-ready: Battery-conscious Wakelock, WebSocket Telemetry, SMS Delivery Loop,
+ * and Real-time Voice Speech Synthesis Output.
  * Engineered by Eng. Yousuf Albaz (AI & Systems Engineer)
  */
-class AssistantBackgroundService : Service() {
+class AssistantBackgroundService : Service(), TextToSpeech.OnInitListener {
 
     private val TAG = "JinnyBackgroundService"
     private val CHANNEL_ID = "JinnyForegroundChannel"
@@ -37,6 +40,8 @@ class AssistantBackgroundService : Service() {
     private var powerManager: PowerManager? = null
     private var currentWebSocket: WebSocket? = null
     private lateinit var prefs: SharedPreferences
+    private var textToSpeech: TextToSpeech? = null
+    private var isTtsInitialized = false
 
     override fun onCreate() {
         super.onCreate()
@@ -44,9 +49,37 @@ class AssistantBackgroundService : Service() {
         powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
         prefs = getSharedPreferences("jinny_settings", Context.MODE_PRIVATE)
 
+        // Initialize Android Text-to-Speech Engine
+        textToSpeech = TextToSpeech(this, this)
+
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildForegroundNotification())
         connectToBackendBridge()
+    }
+
+    override fun onInit(status: Int) {
+        if (status == TextToSpeech.SUCCESS) {
+            val result = textToSpeech?.setLanguage(Locale.UK)
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                textToSpeech?.setLanguage(Locale.US)
+            }
+            // Fine-tune pitch and speech rate for a calm, authoritative Jarvis-like timbre
+            textToSpeech?.setPitch(0.92f)
+            textToSpeech?.setSpeechRate(1.02f)
+            isTtsInitialized = true
+            Log.i(TAG, "Jarvis Voice Synthesis engine initialized successfully.")
+        } else {
+            Log.e(TAG, "TextToSpeech initialization failed with status: $status")
+        }
+    }
+
+    private fun speakText(text: String) {
+        if (isTtsInitialized && textToSpeech != null) {
+            runWithTemporaryWakeLock(15000L) {
+                Log.i(TAG, "Jarvis speaking: $text")
+                textToSpeech?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "JinnySpeechUtterance")
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -162,8 +195,19 @@ class AssistantBackgroundService : Service() {
     private fun handleIncomingCommand(jsonStr: String) {
         try {
             val json = JSONObject(jsonStr)
+            val type = json.optString("type")
             val command = json.optString("command")
 
+            // 1. Handle incoming assistant conversational voice responses
+            if (type == "ASSISTANT_REPLY") {
+                val dataObj = json.optJSONObject("data")
+                val speechOutput = dataObj?.optString("speech_output") ?: json.optString("speech_output")
+                if (speechOutput.isNotEmpty()) {
+                    speakText(speechOutput)
+                }
+            }
+
+            // 2. Handle programmatic cellular SMS dispatch
             if (command == "DISPATCH_SMS") {
                 val phoneNumber = json.getString("phone_number")
                 val message = json.getString("message")
@@ -223,6 +267,8 @@ class AssistantBackgroundService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         serviceScope.cancel()
+        textToSpeech?.stop()
+        textToSpeech?.shutdown()
         currentWebSocket?.sendClose(1000, "Service destroyed")
         Log.i(TAG, "Jinny Background Service stopped gracefully.")
     }
