@@ -24,14 +24,14 @@ from core.sms_dispatcher import SmsDispatcher
 from core.iot_controller import IoTController
 from core.assistant import JinnyAssistantCore
 
-# إعداد الـ Logging الاحترافي المنظم
+# Structured logging configuration
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-7s | %(name)s : %(message)s"
 )
 logger = logging.getLogger("Jinny.Server")
 
-# إنشاء الكائنات المشتركة (Singletons)
+# Instantiate core subsystem singletons
 memory_store = PersistentMemoryStore()
 sms_dispatcher = SmsDispatcher()
 iot_controller = IoTController()
@@ -62,14 +62,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ----------------- طبقة الأمان (Security & Authentication) -----------------
+# ----------------- Security & Gateway Protection Layer -----------------
 api_key_header = APIKeyHeader(name=settings.API_KEY_HEADER, auto_error=False)
 
 
 async def verify_api_key(api_key: Optional[str] = Security(api_key_header)):
-    """التحقق من صحة مفتاح الـ API الممرر في الهيدر"""
+    """Validate API key passed in request header."""
     if settings.DEBUG:
-        return True  # السماح بالتجاوز في وضع التطوير والتجارب فقط
+        return True  # Allow bypass in local development/debug mode only
     if not api_key or api_key != settings.JINNY_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -78,7 +78,7 @@ async def verify_api_key(api_key: Optional[str] = Security(api_key_header)):
     return True
 
 
-# ----------------- نماذج البيانات (Pydantic Schemas) -----------------
+# ----------------- Pydantic Request & Response Schemas -----------------
 class QueryRequest(BaseModel):
     query: str
     client_id: Optional[str] = "android_node_1"
@@ -103,7 +103,7 @@ class SemanticSearchRequest(BaseModel):
     score_threshold: Optional[float] = 0.4
 
 
-# ----------------- مسارات الـ API (REST Endpoints) -----------------
+# ----------------- REST API Endpoints -----------------
 @app.get("/api/health")
 async def health_check():
     return {
@@ -116,7 +116,7 @@ async def health_check():
 
 @app.post("/api/assistant/interact", dependencies=[Depends(verify_api_key)])
 async def interact_with_assistant(req: QueryRequest):
-    """إرسال أمر صوتي/نصي للـ Agent ومعالجته بالذكاء الاصطناعي واستدعاء الأدوات"""
+    """Process voice or text intent via autonomous agentic loop."""
     try:
         response = await assistant_core.process_user_intent(req.query, req.metadata)
         return response
@@ -127,7 +127,7 @@ async def interact_with_assistant(req: QueryRequest):
 
 @app.post("/api/memory/search", dependencies=[Depends(verify_api_key)])
 async def search_memory(req: SemanticSearchRequest):
-    """البحث الدلالي الذكي في الذاكرة عبر الـ Vector Embeddings"""
+    """Perform semantic similarity search on cognitive memory store."""
     results = await memory_store.semantic_search(
         query=req.query,
         limit=req.limit,
@@ -138,13 +138,13 @@ async def search_memory(req: SemanticSearchRequest):
 
 @app.post("/api/sms/dispatch", dependencies=[Depends(verify_api_key)])
 async def dispatch_sms(req: SmsDispatchRequest):
-    """إرسال أمر SMS للشريحة عبر الأندرويد"""
+    """Dispatch programmatic SMS task to connected Android daemon."""
     return await sms_dispatcher.dispatch_silent_sms(req.recipient, req.message, req.priority)
 
 
 @app.get("/api/sms/tasks", dependencies=[Depends(verify_api_key)])
 async def get_sms_task_queue():
-    """عرض سجل الرسائل والرسائل المعلقة في الانتظار"""
+    """Retrieve active SMS queue and delivery history records."""
     return {
         "pending_queue_count": len(sms_dispatcher.pending_queue),
         "history_count": len(sms_dispatcher.history_records),
@@ -154,27 +154,25 @@ async def get_sms_task_queue():
 
 @app.get("/api/iot/devices", dependencies=[Depends(verify_api_key)])
 async def list_iot_devices():
-    """عرض أجهزة المنزل الذكي المسجلة"""
+    """List all registered smart home and IoT devices."""
     return iot_controller.list_devices()
 
 
 @app.post("/api/iot/execute", dependencies=[Depends(verify_api_key)])
-async def execute_iot_command(req: IoTCommandRequest, _=Depends(verify_api_key)):
-    """تنفيذ أمر IoT مباشر على جهاز محدد"""
+async def execute_iot_command(req: IoTCommandRequest):
+    """Execute hardware command on specific registered IoT device."""
     return await iot_controller.execute_device_command(req.device_id, req.action, req.params)
 
 
-# ----------------- جسر الأندرويد (WebSocket Telephony Bridge) -----------------
+# ----------------- Android WebSocket Telephony Bridge -----------------
 @app.websocket("/ws/android-bridge")
 async def android_telemetry_bridge(
     websocket: WebSocket,
     client_id: str = Query("android_primary"),
     token: Optional[str] = Query(None)
 ):
-    """
-    جسر الاتصال الحي والمستمر مع تطبيق الخلفية في هاتف الأندرويد
-    """
-    # التحقق من مفتاح الـ API للـ WebSocket
+    """Bidirectional WebSocket telemetry bridge for Android background daemon."""
+    # Authenticate incoming WebSocket connection token
     if not settings.DEBUG and token != settings.JINNY_API_KEY:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         logger.warning(f"Rejected unauthorized WebSocket connection attempt from: {client_id}")
