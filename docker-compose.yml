@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  # Jinny Core - Brain & Gateway Orchestrator
+  jinny-core:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jinny_core_orchestrator
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8080
+      - DEBUG=false
+      - JINNY_API_KEY=${JINNY_API_KEY:-jinny_live_sec_prod_9948201847192847}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=gemini-1.5-flash
+      - MQTT_BROKER_HOST=mqtt-broker
+      - MQTT_BROKER_PORT=1883
+    volumes:
+      # Persist SQLite memory database outside container
+      - ./backend/jinny_memory.db:/app/jinny_memory.db
+    depends_on:
+      - mqtt-broker
+
+  # Local MQTT Broker for smart home IoT automation
+  mqtt-broker:
+    image: eclipse-mosquitto:2.0
+    container_name: jinny_mqtt_broker
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
