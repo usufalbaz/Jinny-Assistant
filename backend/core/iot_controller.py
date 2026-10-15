@@ -23,7 +23,7 @@ logger = logging.getLogger("Jinny.IoT")
 
 class IoTController:
     def __init__(self):
-        # سجل الأجهزة المدعومة وأنواع البروتوكولات الخاصة بها
+        # Registry of supported devices and their communication protocols
         self.device_registry: Dict[str, Dict[str, Any]] = {
             "living_room_light": {"type": "light", "state": "off", "brightness": 100, "protocol": "homeassistant"},
             "ac_unit": {"type": "climate", "state": "off", "temperature": 22, "mode": "cool", "protocol": "homeassistant"},
@@ -34,16 +34,14 @@ class IoTController:
 
     @staticmethod
     def _send_wol_packet(mac_address: str, broadcast_ip: str = settings.WOL_BROADCAST_IP, port: int = settings.WOL_PORT) -> bool:
-        """
-        إرسال Magic Packet القياسي عبر UDP لإيقاظ الكمبيوتر المغلق (Wake-on-LAN)
-        """
+        """Broadcast standard UDP Magic Packet to trigger Wake-on-LAN (WoL)."""
         try:
-            # تنظيف صيغة الـ MAC Address
+            # Normalize and clean MAC address format
             clean_mac = mac_address.replace(":", "").replace("-", "").replace(".", "")
             if len(clean_mac) != 12:
                 raise ValueError(f"Invalid MAC address format: {mac_address}")
 
-            # تكوين الـ Magic Packet: 6 بايتات FF متبوعة بـ MAC مكرر 16 مرة
+            # Construct Magic Packet: 6 bytes of 0xFF followed by MAC repeated 16 times
             payload = bytes.fromhex("FF" * 6 + clean_mac * 16)
 
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
@@ -57,9 +55,7 @@ class IoTController:
             return False
 
     async def _send_mqtt_command(self, topic: str, payload: Dict[str, Any]) -> bool:
-        """
-        نشر أمر حقيقي لوسيط MQTT بشكل غير متزامن (Asynchronous)
-        """
+        """Publish MQTT command payload asynchronously to the target broker."""
         try:
             auth = None
             if settings.MQTT_USERNAME and settings.MQTT_PASSWORD:
@@ -84,9 +80,7 @@ class IoTController:
             return False
 
     async def _call_home_assistant(self, domain: str, service: str, entity_id: str, params: Dict[str, Any]) -> bool:
-        """
-        استدعاء خدمات Home Assistant عبر الـ REST API الرسمي
-        """
+        """Execute Home Assistant service calls via official REST API."""
         if not settings.HOME_ASSISTANT_URL or not settings.HOME_ASSISTANT_TOKEN:
             logger.warning("Home Assistant URL or Token not configured in settings.")
             return False
@@ -112,13 +106,11 @@ class IoTController:
             return False
 
     async def execute_device_command(self, device_id: str, action: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        """
-        تنفيذ الأوامر الذكية وتحويلها إلى البروتوكول المناسب للجهاز
-        """
+        """Route and execute hardware command through appropriate protocol adapter."""
         params = params or {}
         logger.info(f"Executing IoT Command: Device='{device_id}', Action='{action}', Params={params}")
 
-        # البحث المطابق أو التقريبي عن الجهاز
+        # Device identifier lookup with fuzzy matching support
         target_id = None
         for d in self.device_registry:
             if d == device_id or d in device_id or device_id in d:
@@ -132,25 +124,25 @@ class IoTController:
         protocol = device.get("protocol", "homeassistant")
         success = False
 
-        # 1. بروتوكول Wake-on-LAN
+        # 1. Wake-on-LAN (WoL) Protocol
         if protocol == "wol" or action.lower() in ["wake", "boot", "wol"]:
             mac = device.get("mac", "00:11:22:33:44:55")
             success = self._send_wol_packet(mac)
 
-        # 2. بروتوكول MQTT
+        # 2. MQTT Protocol
         elif protocol == "mqtt":
             topic = device.get("topic", f"{settings.MQTT_BASE_TOPIC}/{target_id}/set")
             payload = {"state": action, **params}
             success = await self._send_mqtt_command(topic, payload)
 
-        # 3. بروتوكول Home Assistant
+        # 3. Home Assistant REST Protocol
         elif protocol == "homeassistant":
             domain = device["type"]
             service = "turn_on" if action.lower() == "on" else "turn_off" if action.lower() == "off" else action.lower()
             entity_id = f"{domain}.{target_id}"
             success = await self._call_home_assistant(domain, service, entity_id, params)
 
-        # تحديث الحالة محلياً
+        # Update cached state locally
         device["state"] = action
         if "brightness" in params:
             device["brightness"] = params["brightness"]
