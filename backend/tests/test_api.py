@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-# إضافة مجلد backend إلى مسار بايثون
+# Add backend directory to sys.path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from main import app
@@ -20,7 +20,7 @@ AUTH_HEADERS = {
 
 
 def test_health_check_open_endpoint():
-    """اختبار نقطة فحص الحالة (مفتوحة بدون مفتاح أمان)"""
+    """Test open health check endpoint without authentication."""
     with TestClient(app) as client:
         response = client.get("/api/health")
         assert response.status_code == 200
@@ -30,19 +30,19 @@ def test_health_check_open_endpoint():
 
 
 def test_protected_endpoints_reject_unauthorized():
-    """اختبار أن النظام يرفض أي طلب بدون مفتاح أمان بكود 401"""
+    """Test that protected endpoints reject unauthorized requests with HTTP 401."""
     with TestClient(app) as client:
-        # تجربة طلب بدون هيدر الأمان
+        # Test request without security header
         response = client.get("/api/iot/devices")
         assert response.status_code == 401
 
-        # تجربة طلب بمفتاح أمان خاطئ
+        # Test request with invalid security header
         response = client.get("/api/iot/devices", headers={settings.API_KEY_HEADER: "wrong_fake_key"})
         assert response.status_code == 401
 
 
 def test_list_iot_devices_authorized():
-    """اختبار جلب أجهزة الـ IoT بعد تمرير مفتاح الأمان الصحيح"""
+    """Test listing IoT devices with valid authentication header."""
     with TestClient(app) as client:
         response = client.get("/api/iot/devices", headers=AUTH_HEADERS)
         assert response.status_code == 200
@@ -52,7 +52,7 @@ def test_list_iot_devices_authorized():
 
 
 def test_assistant_interaction_authorized():
-    """اختبار التفاعل مع المساعد الذكي مع تمرير مفتاح الأمان"""
+    """Test assistant interaction with valid authentication header."""
     with TestClient(app) as client:
         payload = {"query": "Status report, Jinny"}
         response = client.post("/api/assistant/interact", json=payload, headers=AUTH_HEADERS)
