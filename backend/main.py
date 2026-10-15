@@ -5,6 +5,7 @@ Architected & Engineered by Eng. Yousuf Albaz (AI & Systems Engineer)
 Features:
 - Secured Gateway with X-Jinny-Api-Key verification
 - Endpoints for Agent Intent reasoning, Semantic Memory Search, IoT control, and Neural Voice Synthesis
+- Proactive Autonomous Intelligence worker integration in application lifespan
 - Bi-directional WebSocket Telephony Bridge with authentication & telemetry reporting
 """
 
@@ -25,6 +26,7 @@ from core.sms_dispatcher import SmsDispatcher
 from core.iot_controller import IoTController
 from core.assistant import JinnyAssistantCore
 from core.voice_engine import NeuralVoiceEngine
+from core.proactive_agent import ProactiveAutonomousAgent
 
 # Structured logging configuration
 logging.basicConfig(
@@ -39,15 +41,20 @@ sms_dispatcher = SmsDispatcher()
 iot_controller = IoTController()
 voice_engine = NeuralVoiceEngine()
 assistant_core = JinnyAssistantCore(memory_store, sms_dispatcher, iot_controller)
+proactive_agent = ProactiveAutonomousAgent(memory_store, iot_controller, sms_dispatcher)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Initializing Jinny Core Enterprise Subsystems...")
     await memory_store.initialize()
+    # Start background proactive intelligence worker
+    await proactive_agent.start()
     logger.info(f"Jinny Core online and listening on {settings.HOST}:{settings.PORT}")
     yield
-    logger.info("Gracefully shutting down Jinny Core services.")
+    logger.info("Gracefully shutting down Jinny Core services...")
+    await proactive_agent.stop()
+    logger.info("Jinny Core services stopped.")
 
 
 app = FastAPI(
@@ -181,6 +188,14 @@ async def list_iot_devices():
 async def execute_iot_command(req: IoTCommandRequest):
     """Execute hardware command on specific registered IoT device."""
     return await iot_controller.execute_device_command(req.device_id, req.action, req.params)
+
+
+@app.post("/api/proactive/trigger", dependencies=[Depends(verify_api_key)])
+async def trigger_proactive_briefing():
+    """Manually trigger and broadcast an autonomous Jarvis status briefing."""
+    briefing = await proactive_agent.generate_system_briefing()
+    await proactive_agent._broadcast_voice_briefing(briefing)
+    return {"status": "broadcasted", "briefing": briefing}
 
 
 # ----------------- Android WebSocket Telephony Bridge -----------------
