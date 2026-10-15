@@ -33,7 +33,7 @@ class MemoryRecord(Base):
     category = Column(String(50), index=True, default="general")
     key = Column(String(100), index=True)
     value = Column(Text, nullable=False)
-    embedding = Column(Text, nullable=True)  # تخزين الـ Vector كـ JSON Array
+    embedding = Column(Text, nullable=True)  # Serialized float vector stored as JSON array
     confidence = Column(Float, default=1.0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -49,13 +49,13 @@ class PersistentMemoryStore:
             self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
     async def initialize(self):
-        """إنشاء الجداول في قاعدة البيانات عند بدء التشغيل"""
+        """Initialize database tables on application startup."""
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Cognitive Semantic Memory Subsystem initialized successfully.")
 
     def _generate_embedding(self, text: str) -> Optional[List[float]]:
-        """توليد Vector Embedding للنص لفهم المعنى رياضياً"""
+        """Generate text embedding vector using Gemini text-embedding-004."""
         if not self.client:
             return None
         try:
@@ -63,7 +63,7 @@ class PersistentMemoryStore:
                 model="text-embedding-004",
                 contents=text
             )
-            # استخراج قائمة الأرقام التي تمثل معنى الجملة
+            # Extract vector values representation
             if hasattr(result, "embedding") and result.embedding:
                 return result.embedding.values
             if hasattr(result, "embeddings") and result.embeddings:
@@ -75,7 +75,7 @@ class PersistentMemoryStore:
 
     @staticmethod
     def _cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
-        """حساب نسبة التشابه الدلالي بين متجهين (Cosine Similarity)"""
+        """Calculate cosine similarity metric between two float vectors."""
         a = np.array(vec_a, dtype=np.float32)
         b = np.array(vec_b, dtype=np.float32)
         norm_a = np.linalg.norm(a)
@@ -85,11 +85,11 @@ class PersistentMemoryStore:
         return float(np.dot(a, b) / (norm_a * norm_b))
 
     async def remember(self, category: str, key: str, value: Any, confidence: float = 1.0):
-        """حفظ معلومة جديدة مع حساب وتخزين متجه المعنى الخاص بها"""
+        """Store memory record with calculated semantic embedding vector."""
         async with self.async_session() as session:
             serialized_val = json.dumps(value, ensure_ascii=False) if not isinstance(value, str) else value
-            
-            # نحسب الـ Embedding للنص المدمج (المفتاح + القيمة)
+
+            # Compute embedding for compound key-value text
             full_text = f"{key}: {serialized_val}"
             embedding_vector = self._generate_embedding(full_text)
             embedding_json = json.dumps(embedding_vector) if embedding_vector else None
@@ -117,7 +117,7 @@ class PersistentMemoryStore:
             logger.info(f"Stored cognitive memory with semantic embedding: [{category}] {key}")
 
     async def recall(self, category: str, key: Optional[str] = None) -> Any:
-        """استرجاع تقليدي بالمفتاح المباشر"""
+        """Retrieve memory by exact category and key."""
         async with self.async_session() as session:
             if key:
                 q = select(MemoryRecord).where(MemoryRecord.category == category, MemoryRecord.key == key)
@@ -143,11 +143,11 @@ class PersistentMemoryStore:
 
     async def semantic_search(self, query: str, limit: int = 5, score_threshold: float = 0.5) -> List[Dict[str, Any]]:
         """
-        البحث الذكي بالمعنى: يعثر على الذكريات المشابهة حتى لو اختلفت الكلمات تماماً
+        Semantic search: retrieve memories ranked by cosine similarity against query vector.
         """
         query_vector = self._generate_embedding(query)
         if not query_vector:
-            # لو فشل التضمين، نرجع أحدث الذكريات كـ Fallback
+            # Fallback if query embedding generation fails
             return []
 
         async with self.async_session() as session:
@@ -170,12 +170,12 @@ class PersistentMemoryStore:
                 except Exception as e:
                     logger.warning(f"Error parsing embedding for memory id {r.id}: {e}")
 
-            # ترتيب النتائج من الأكثر تشابهاً إلى الأقل
+            # Rank results by similarity score descending
             ranked_results.sort(key=lambda x: x["similarity"], reverse=True)
             return ranked_results[:limit]
 
     async def get_context_snapshot(self) -> str:
-        """تجهيز ملخص لأحدث الذكريات لحقنها في الـ System Instruction للذكاء الاصطناعي"""
+        """Build active memory snapshot for LLM system context injection."""
         async with self.async_session() as session:
             q = select(MemoryRecord).order_by(MemoryRecord.updated_at.desc()).limit(15)
             res = await session.execute(q)
