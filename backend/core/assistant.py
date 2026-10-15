@@ -2,7 +2,7 @@
 Jinny Core - Autonomous Cognitive Orchestrator & Multi-Tool Agent
 Engineered by Eng. Yousuf Albaz (AI & Systems Engineer)
 
-Replaces legacy RegEx parsing with Gemini Tool-Calling (Function Execution) loops.
+Multi-tool orchestration agent powered by Google Gemini Function Calling.
 """
 
 import logging
@@ -31,7 +31,7 @@ class JinnyAssistantCore:
         self.sms_dispatcher = sms_dispatcher
         self.iot = iot_controller
 
-        # تهيئة عميل Gemini إذا كان المفتاح متوفراً
+        # Initialize Gemini SDK client if API key is configured
         self.client: Optional[genai.Client] = None
         if settings.GEMINI_API_KEY:
             self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
@@ -41,7 +41,7 @@ class JinnyAssistantCore:
 
     def _build_tools_schema(self) -> List[types.Tool]:
         """
-        تعريف الأدوات والـ Capabilities التي يستطيع الـ Agent استدعاؤها برمجياً.
+        Build and declare execution tool schemas available for autonomous agent invocation.
         """
         sms_tool = types.FunctionDeclaration(
             name="dispatch_sms",
@@ -102,7 +102,7 @@ class JinnyAssistantCore:
         return [types.Tool(function_declarations=[sms_tool, iot_tool, memory_store_tool, memory_recall_tool])]
 
     async def _execute_tool(self, tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
-        """توجيه استدعاء الأداة إلى الموديول المسؤول داخل النظام"""
+        """Dispatch and route tool execution calls to the respective backend subsystem."""
         logger.info(f"Agent executing tool: {tool_name} with args: {args}")
         try:
             if tool_name == "dispatch_sms":
@@ -148,11 +148,11 @@ class JinnyAssistantCore:
 
     async def process_user_intent(self, text_input: str, user_metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        الدورة التفكيرية الكاملة للـ Agent:
-        1. قراءة السياق من الذاكرة الحية.
-        2. تمرير نص المستخدم ونواياه للـ LLM.
-        3. استدعاء الـ Tools المناسبة وحل أي Dependencies.
-        4. صياغة الرد النهائي بأسلوب Jarvis المهني المتوازن.
+        Full agentic cognitive loop:
+        1. Context snapshot retrieval from vector/SQL storage.
+        2. Gemini multi-tool reasoning and function declaration matching.
+        3. Asynchronous execution of requested tools.
+        4. Synthesizing final conversational reply in Jarvis persona.
         """
         query = text_input.strip()
         logger.info(f"Agent received intent request: '{query}'")
@@ -164,7 +164,7 @@ class JinnyAssistantCore:
                 "action_result": None
             }
 
-        # جلب سياق الذاكرة الأخير
+        # Retrieve active context snapshot from long-term memory
         memory_context = await self.memory.get_context_snapshot()
 
         system_instruction = (
@@ -180,7 +180,7 @@ class JinnyAssistantCore:
         tools = self._build_tools_schema()
 
         try:
-            # 1. المرحلة الأولى: استنتاج النوايا والأدوات
+            # Phase 1: Intent reasoning and tool declaration invocation
             response = self.client.models.generate_content(
                 model=settings.GEMINI_MODEL,
                 contents=query,
@@ -192,7 +192,7 @@ class JinnyAssistantCore:
                 )
             )
 
-            # فحص إذا كان النموذج طلب استدعاء أداة (Function Call)
+            # Check if model requested function execution
             executed_tools = []
             if response.function_calls:
                 tool_results = []
@@ -206,7 +206,7 @@ class JinnyAssistantCore:
                         )
                     )
 
-                # 2. المرحلة الثانية: إعادة النتائج للنموذج لصياغة الرد الصوتي/النصي النهائي
+                # Phase 2: Feed execution output back to synthesize final response
                 followup_response = self.client.models.generate_content(
                     model=settings.GEMINI_MODEL,
                     contents=[
@@ -230,7 +230,7 @@ class JinnyAssistantCore:
                     "timestamp": datetime.utcnow().isoformat()
                 }
 
-            # محادثة عامة بدون الحاجة لأدوات
+            # Standard conversational dialogue without tool execution
             return {
                 "intent": "CONVERSATIONAL",
                 "speech_output": response.text or "All systems nominal, sir.",
