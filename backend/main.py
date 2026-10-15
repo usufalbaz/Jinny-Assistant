@@ -4,7 +4,7 @@ Architected & Engineered by Eng. Yousuf Albaz (AI & Systems Engineer)
 
 Features:
 - Secured Gateway with X-Jinny-Api-Key verification
-- Endpoints for Agent Intent reasoning, Semantic Memory Search, and IoT control
+- Endpoints for Agent Intent reasoning, Semantic Memory Search, IoT control, and Neural Voice Synthesis
 - Bi-directional WebSocket Telephony Bridge with authentication & telemetry reporting
 """
 
@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from typing import Dict, Any, Optional, List
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Security, status, Query
+from fastapi.responses import Response
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -23,6 +24,7 @@ from core.memory import PersistentMemoryStore
 from core.sms_dispatcher import SmsDispatcher
 from core.iot_controller import IoTController
 from core.assistant import JinnyAssistantCore
+from core.voice_engine import NeuralVoiceEngine
 
 # Structured logging configuration
 logging.basicConfig(
@@ -35,6 +37,7 @@ logger = logging.getLogger("Jinny.Server")
 memory_store = PersistentMemoryStore()
 sms_dispatcher = SmsDispatcher()
 iot_controller = IoTController()
+voice_engine = NeuralVoiceEngine()
 assistant_core = JinnyAssistantCore(memory_store, sms_dispatcher, iot_controller)
 
 
@@ -103,6 +106,11 @@ class SemanticSearchRequest(BaseModel):
     score_threshold: Optional[float] = 0.4
 
 
+class VoiceSynthesizeRequest(BaseModel):
+    text: str
+    voice: Optional[str] = None
+
+
 # ----------------- REST API Endpoints -----------------
 @app.get("/api/health")
 async def health_check():
@@ -122,6 +130,17 @@ async def interact_with_assistant(req: QueryRequest):
         return response
     except Exception as e:
         logger.error(f"Inference gateway error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/voice/synthesize", dependencies=[Depends(verify_api_key)])
+async def synthesize_voice(req: VoiceSynthesizeRequest):
+    """Synthesize text into streaming neural MP3 audio."""
+    try:
+        audio_bytes = await voice_engine.synthesize_speech(req.text, req.voice)
+        return Response(content=audio_bytes, media_type="audio/mpeg")
+    except Exception as e:
+        logger.error(f"Voice synthesis error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
