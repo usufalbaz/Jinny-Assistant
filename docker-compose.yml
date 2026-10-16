@@ -16,7 +16,7 @@ services:
       - DEBUG=false
       - JINNY_API_KEY=${JINNY_API_KEY:-jinny_live_sec_prod_9948201847192847}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - GEMINI_MODEL=gemini-1.5-flash
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.8-flash}
       - MQTT_BROKER_HOST=mqtt-broker
       - MQTT_BROKER_PORT=1883
     volumes:
