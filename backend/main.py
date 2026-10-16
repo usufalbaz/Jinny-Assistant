@@ -97,30 +97,40 @@ class IoTCommandRequest(BaseModel):
 
 class ApiKeyUpdateRequest(BaseModel):
     gemini_api_key: str
+    gemini_model: str
 
 
 # ----------------- Dynamic Settings Endpoint -----------------
 @app.post("/api/settings/gemini-key")
 async def update_gemini_api_key(req: ApiKeyUpdateRequest):
-    """Dynamically set and activate Gemini API Key from the web dashboard."""
+    """Dynamically set and activate Gemini API Key and Model from the web dashboard."""
     key = req.gemini_api_key.strip()
+    model = req.gemini_model.strip()
+    
     if not key:
         raise HTTPException(status_code=400, detail="API key cannot be empty.")
+    if not model:
+        raise HTTPException(status_code=400, detail="Model name cannot be empty.")
 
+    # Update global settings dynamically
     settings.GEMINI_API_KEY = key
+    settings.GEMINI_MODEL = model
+    
+    # Re-initialize AI clients with new key
     assistant_core.client = genai.Client(api_key=key)
     memory_store.client = genai.Client(api_key=key)
 
-    # Persist key to .env file
+    # Persist key and model to .env file
     try:
         env_path = os.path.join(os.path.dirname(__file__), ".env")
         with open(env_path, "w") as f:
             f.write(f"GEMINI_API_KEY={key}\n")
+            f.write(f"GEMINI_MODEL={model}\n")
     except Exception as e:
         logger.warning(f"Could not write .env file: {e}")
 
-    logger.info("Gemini API Key dynamically configured and activated.")
-    return {"status": "success", "message": "Gemini AI Core online and fully activated!"}
+    logger.info(f"Gemini AI Core activated with model: {model}")
+    return {"status": "success", "message": f"AI Core online using {model}!"}
 
 
 # ----------------- The Holographic Jarvis Web HUD -----------------
@@ -218,7 +228,6 @@ async def jarvis_holographic_dashboard():
                 border-bottom: 1px dashed rgba(0, 240, 255, 0.25);
                 padding-bottom: 8px;
             }
-            /* Interactive Device Cards */
             .device-row {
                 display: flex;
                 justify-content: space-between;
@@ -243,7 +252,6 @@ async def jarvis_holographic_dashboard():
             .toggle-btn.off { background: transparent; color: #8899aa; border-color: #445566; }
             .climate-ctrl { display: flex; gap: 8px; align-items: center; }
             .ctrl-btn { background: rgba(0,240,255,0.15); border: 1px solid var(--cyan); color: #fff; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-            /* Arc Reactor Center */
             .center-stage {
                 display: flex;
                 flex-direction: column;
@@ -320,7 +328,6 @@ async def jarvis_holographic_dashboard():
             }
             .action-btn:hover { background: var(--cyan); color: #000; }
             .log-terminal { font-family: monospace; font-size: 12px; color: #79a8d0; overflow-y: auto; flex: 1; line-height: 1.6; }
-            /* Modal */
             .modal-overlay {
                 display: none;
                 position: fixed;
@@ -340,6 +347,7 @@ async def jarvis_holographic_dashboard():
                 width: 90%;
                 max-width: 480px;
             }
+            .input-label { font-size: 13px; color: var(--cyan); margin-bottom: 6px; display: block; font-family: 'Orbitron', sans-serif; }
             @keyframes rotate { 100% { transform: rotate(360deg); } }
         </style>
     </head>
@@ -348,20 +356,17 @@ async def jarvis_holographic_dashboard():
             <div class="logo">⚡ JINNY // JARVIS CORE</div>
             <div class="header-controls">
                 <div class="status-pill" id="sys-status">● SYSTEM STANDBY</div>
-                <button class="settings-btn" onclick="openModal()">⚙️ AI KEY</button>
+                <button class="settings-btn" onclick="openModal()">⚙️ AI SETTINGS</button>
             </div>
         </header>
 
         <main>
-            <!-- Left: Interactive IoT Hardware Controls -->
             <div class="hud-card">
                 <div class="card-title">SMART HARDWARE SWITCHES</div>
-
                 <div class="device-row">
                     <div><div class="device-name">Living Room Light</div><small style="color:#6e859d">HomeAssistant Bridge</small></div>
                     <button class="toggle-btn off" id="btn-light" onclick="toggleDevice('living_room_light')">OFF</button>
                 </div>
-
                 <div class="device-row">
                     <div><div class="device-name">Climate AC Unit</div><small style="color:#6e859d" id="temp-display">22°C</small></div>
                     <div class="climate-ctrl">
@@ -369,38 +374,31 @@ async def jarvis_holographic_dashboard():
                         <button class="ctrl-btn" onclick="adjustTemp(+1)">+</button>
                     </div>
                 </div>
-
                 <div class="device-row">
                     <div><div class="device-name">Smart Lock</div><small style="color:#6e859d">MQTT Realtime</small></div>
                     <button class="toggle-btn on" id="btn-lock" onclick="toggleLock()">LOCKED</button>
                 </div>
-
                 <div class="device-row">
                     <div><div class="device-name">Workstation PC</div><small style="color:#6e859d">Wake-on-LAN</small></div>
                     <button class="toggle-btn off" onclick="wakePc()">WAKE PC</button>
                 </div>
             </div>
 
-            <!-- Center: Arc Reactor & Voice Wave -->
             <div class="center-stage">
                 <div class="arc-reactor" id="reactor-orb" onclick="toggleVoiceListening()">
                     <div class="arc-inner-ring"></div>
                     <div class="arc-core-text" id="core-state">CLICK TO<br>SPEAK</div>
                 </div>
-
                 <canvas id="wave-canvas"></canvas>
-
                 <div class="speech-readout" id="readout">
-                    "All systems optimal, sir. Configure your Gemini API key or speak your command."
+                    "All systems optimal, sir. Configure your Gemini API key and Model, or speak your command."
                 </div>
-
                 <div class="input-box">
                     <input type="text" id="cmd-input" placeholder="Speak via Arc Reactor or type your order..." onkeypress="if(event.key==='Enter') sendCommand()">
                     <button class="action-btn" onclick="sendCommand()">EXECUTE</button>
                 </div>
             </div>
 
-            <!-- Right: Neural Telemetry Logs -->
             <div class="hud-card">
                 <div class="card-title">DIAGNOSTIC LOG FEED</div>
                 <div class="log-terminal" id="term-logs">
@@ -412,12 +410,17 @@ async def jarvis_holographic_dashboard():
             </div>
         </main>
 
-        <!-- Settings Modal for Gemini Key -->
+        <!-- Settings Modal for Gemini Key & Model -->
         <div class="modal-overlay" id="settings-modal">
             <div class="modal-content">
                 <h3 style="font-family:'Orbitron',sans-serif; color:var(--cyan); margin-bottom:15px;">CONFIGURE GEMINI AI</h3>
-                <p style="font-size:14px; color:#88a0bc; margin-bottom:15px;">Paste your free Google Gemini API Key from Google AI Studio to unlock autonomous thinking and conversation.</p>
-                <input type="text" id="key-input" placeholder="AIzaSy..." style="width:100%; margin-bottom:20px;">
+                
+                <label class="input-label">GEMINI API KEY</label>
+                <input type="text" id="key-input" placeholder="AIzaSy..." style="width:100%; margin-bottom:15px;">
+                
+                <label class="input-label">AI MODEL NAME</label>
+                <input type="text" id="model-input" value="gemini-1.5-pro-latest" placeholder="e.g., gemini-1.5-pro-latest" style="width:100%; margin-bottom:25px;">
+                
                 <div style="display:flex; justify-content:flex-end; gap:10px;">
                     <button class="action-btn" style="background:#223344;" onclick="closeModal()">CANCEL</button>
                     <button class="action-btn" onclick="saveApiKey()">ACTIVATE AI</button>
@@ -446,7 +449,6 @@ async def jarvis_holographic_dashboard():
                 logs.scrollTop = logs.scrollHeight;
             }
 
-            // Waveform animation
             function drawWave() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.beginPath();
@@ -463,7 +465,6 @@ async def jarvis_holographic_dashboard():
             }
             drawWave();
 
-            // Speak response via Neural TTS
             async function speakOut(text) {
                 isSpeaking = true;
                 try {
@@ -489,7 +490,6 @@ async def jarvis_holographic_dashboard():
                 }
             }
 
-            // Transmit query to Assistant
             async function processQuery(queryText) {
                 if(!queryText.trim()) return;
                 readout.innerText = `Processing: "${queryText}"...`;
@@ -519,7 +519,6 @@ async def jarvis_holographic_dashboard():
                 input.value = "";
             }
 
-            // Voice recognition
             let recognition;
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -546,7 +545,6 @@ async def jarvis_holographic_dashboard():
                 else alert("Microphone supported in Google Chrome.");
             }
 
-            // Interactive IoT Actions
             async function executeDevice(id, action, params = {}) {
                 log(`IoT DISPATCH -> ${id} [${action}]`);
                 try {
@@ -589,7 +587,6 @@ async def jarvis_holographic_dashboard():
                     });
                     currentDevices = await res.json();
                     
-                    // Update UI state
                     const light = document.getElementById("btn-light");
                     if (currentDevices.living_room_light?.state === "on") {
                         light.className = "toggle-btn on"; light.innerText = "ON";
@@ -610,25 +607,29 @@ async def jarvis_holographic_dashboard():
             setInterval(fetchDevices, 4000);
             fetchDevices();
 
-            // Settings Modal
             function openModal() { document.getElementById("settings-modal").style.display = "flex"; }
             function closeModal() { document.getElementById("settings-modal").style.display = "none"; }
 
             async function saveApiKey() {
                 const key = document.getElementById("key-input").value.trim();
-                if (!key) return alert("Please enter an API Key.");
+                const model = document.getElementById("model-input").value.trim();
+                if (!key || !model) return alert("Please enter both API Key and Model Name.");
                 try {
                     const res = await fetch("/api/settings/gemini-key", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ gemini_api_key: key })
+                        body: JSON.stringify({ gemini_api_key: key, gemini_model: model })
                     });
                     const data = await res.json();
-                    log("Gemini AI Core online and activated.");
-                    document.getElementById("sys-status").innerText = "● AI CORE ONLINE";
-                    document.getElementById("sys-status").style.color = "#00ff88";
-                    closeModal();
-                    speakOut("AI Core online, sir. All neural inference systems are operational.");
+                    if(res.ok) {
+                        log(`AI Core activated with model: ${model}`);
+                        document.getElementById("sys-status").innerText = "● AI CORE ONLINE";
+                        document.getElementById("sys-status").style.color = "#00ff88";
+                        closeModal();
+                        speakOut("AI Core online, sir. All neural inference systems are operational.");
+                    } else {
+                        alert("Error: " + data.detail);
+                    }
                 } catch(e) {
                     alert("Error activating API key: " + e.message);
                 }
