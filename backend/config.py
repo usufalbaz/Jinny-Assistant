@@ -11,7 +11,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """
     Production configuration orchestrator for Jinny Core AI Assistant.
-    Loads and validates environment variables with strict type safety.
     """
     PROJECT_NAME: str = "Jinny Core AI Assistant"
     VERSION: str = "3.0.0-Enterprise"
@@ -28,12 +27,15 @@ class Settings(BaseSettings):
     # Persistent Cognitive & Semantic Memory
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./jinny_memory.db")
     MEMORY_RETENTION_DAYS: int = 365
-    EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
+    EMBEDDING_MODEL_NAME: str = "text-embedding-004"
 
     # Multimodal LLM & Tool Calling Orchestrator
     LLM_PROVIDER: str = "gemini"
     GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY", None)
-    GEMINI_MODEL: str = "gemini-1.5-flash"
+    
+    # FIX: Changed to the most powerful and stable model supported by Google API
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-1.5-pro-latest")
+    
     GEMINI_TEMPERATURE: float = 0.2
     GEMINI_MAX_OUTPUT_TOKENS: int = 1024
 
@@ -57,6 +59,5 @@ class Settings(BaseSettings):
         case_sensitive=True,
         extra="ignore"
     )
-
 
 settings = Settings()
