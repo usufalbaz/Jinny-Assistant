@@ -107,7 +107,11 @@ async def jarvis_holographic_dashboard():
                 display: flex;
                 flex-direction: column;
             }
-            #canvas-bg { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; opacity: 0.6; }
+            /* Particle Network Background */
+            #canvas-bg {
+                position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; opacity: 0.6;
+            }
+            /* Scanlines */
             body::after {
                 content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
                 background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
@@ -132,13 +136,18 @@ async def jarvis_holographic_dashboard():
                 backdrop-filter: blur(10px); box-shadow: 0 0 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; position: relative;
                 overflow: hidden;
             }
+            .hud-card::before, .hud-card::after { content: ''; position: absolute; width: 20px; height: 20px; border: 2px solid var(--cyan); }
+            .hud-card::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+            .hud-card::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
             .card-title { font-family: 'Orbitron', sans-serif; font-size: 14px; letter-spacing: 3px; color: var(--cyan); margin-bottom: 20px; border-bottom: 1px dashed rgba(0, 229, 255, 0.3); padding-bottom: 10px; }
             .device-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; margin-bottom: 12px; background: rgba(0, 229, 255, 0.03); border: 1px solid rgba(0, 229, 255, 0.1); border-radius: 8px; transition: 0.3s; }
+            .device-row:hover { border-color: var(--cyan); background: rgba(0, 229, 255, 0.08); }
             .toggle-btn { padding: 6px 18px; font-family: 'Orbitron', sans-serif; font-weight: bold; border-radius: 4px; cursor: pointer; border: 1px solid; transition: 0.3s; }
             .toggle-btn.on { background: var(--cyan); color: #000; border-color: var(--cyan); box-shadow: 0 0 15px var(--cyan-glow); }
             .toggle-btn.off { background: transparent; color: #557; border-color: #335; }
             .toggle-btn:disabled { opacity: 0.5; cursor: not-allowed; }
             
+            /* Arc Reactor 3D */
             .center-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
             .reactor-container { position: relative; width: 260px; height: 260px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
             .ring { position: absolute; border-radius: 50%; border: 2px solid transparent; }
@@ -246,7 +255,7 @@ async def jarvis_holographic_dashboard():
             <div class="modal-content">
                 <h3 style="color:var(--cyan); font-family:'Orbitron'; margin-bottom:20px;">SYSTEM CONFIG</h3>
                 <input type="text" id="key-input" placeholder="Gemini API Key..." style="width:100%; margin-bottom:15px;">
-                <input type="text" id="model-input" value="gemini-1.5-flash" placeholder="Model Name (e.g. gemini-1.5-flash)" style="width:100%; margin-bottom:25px;">
+                <input type="text" id="model-input" value="gemini-3.8-flash" placeholder="Model Name (e.g. gemini-3.8-flash)" style="width:100%; margin-bottom:25px;">
                 <div style="display:flex; justify-content:flex-end; gap:10px;">
                     <button class="mic-lang-btn" style="background:transparent;" onclick="closeModal()">CLOSE</button>
                     <button class="mic-lang-btn" onclick="saveApiKey()">SAVE</button>
@@ -370,6 +379,10 @@ async def jarvis_holographic_dashboard():
 
             function startMic() {
                 if (!recognition) return alert("Mic not supported in this browser.");
+                if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'https:') {
+                    alert("Microphone requires localhost or HTTPS.");
+                    return;
+                }
                 playBeep(900, 'sine', 0.2);
                 recognition.lang = micLang;
                 recognition.onstart = () => { reactor.classList.add("listening"); coreText.innerHTML = "LISTENING"; };
