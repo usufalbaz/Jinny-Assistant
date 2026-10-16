@@ -102,15 +102,12 @@ async def jarvis_holographic_dashboard():
                 color: #e2f1ff;
                 font-family: 'Rajdhani', 'Cairo', sans-serif;
                 height: 100vh;
-                overflow: hidden;
+                width: 100vw;
+                overflow: hidden; /* Prevent ANY scrolling on the page */
                 display: flex;
                 flex-direction: column;
             }
-            /* Particle Network Background */
-            #canvas-bg {
-                position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; opacity: 0.6;
-            }
-            /* Scanlines */
+            #canvas-bg { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; opacity: 0.6; }
             body::after {
                 content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
                 background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
@@ -129,24 +126,20 @@ async def jarvis_holographic_dashboard():
                 padding: 6px 18px; border-radius: 4px; cursor: pointer; font-family: 'Orbitron', sans-serif; font-weight: bold; transition: 0.3s;
             }
             .mic-lang-btn:hover { background: var(--cyan); color: #000; box-shadow: 0 0 15px var(--cyan-glow); }
-            main { flex: 1; display: grid; grid-template-columns: 350px 1fr 350px; gap: 30px; padding: 30px; }
+            main { flex: 1; display: grid; grid-template-columns: 350px 1fr 350px; gap: 30px; padding: 30px; height: calc(100vh - 70px); overflow: hidden; }
             .hud-card {
                 background: var(--panel-bg); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 16px; padding: 25px;
                 backdrop-filter: blur(10px); box-shadow: 0 0 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; position: relative;
+                overflow: hidden;
             }
-            .hud-card::before, .hud-card::after { content: ''; position: absolute; width: 20px; height: 20px; border: 2px solid var(--cyan); }
-            .hud-card::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
-            .hud-card::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
             .card-title { font-family: 'Orbitron', sans-serif; font-size: 14px; letter-spacing: 3px; color: var(--cyan); margin-bottom: 20px; border-bottom: 1px dashed rgba(0, 229, 255, 0.3); padding-bottom: 10px; }
             .device-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; margin-bottom: 12px; background: rgba(0, 229, 255, 0.03); border: 1px solid rgba(0, 229, 255, 0.1); border-radius: 8px; transition: 0.3s; }
-            .device-row:hover { border-color: var(--cyan); background: rgba(0, 229, 255, 0.08); }
             .toggle-btn { padding: 6px 18px; font-family: 'Orbitron', sans-serif; font-weight: bold; border-radius: 4px; cursor: pointer; border: 1px solid; transition: 0.3s; }
             .toggle-btn.on { background: var(--cyan); color: #000; border-color: var(--cyan); box-shadow: 0 0 15px var(--cyan-glow); }
             .toggle-btn.off { background: transparent; color: #557; border-color: #335; }
             .toggle-btn:disabled { opacity: 0.5; cursor: not-allowed; }
             
-            /* Arc Reactor 3D */
-            .center-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+            .center-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
             .reactor-container { position: relative; width: 260px; height: 260px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
             .ring { position: absolute; border-radius: 50%; border: 2px solid transparent; }
             .ring-1 { width: 260px; height: 260px; border-top: 2px solid var(--cyan); border-bottom: 2px solid var(--cyan); animation: spin 8s linear infinite; }
@@ -162,20 +155,34 @@ async def jarvis_holographic_dashboard():
             .reactor-container.listening .ring-2 { border-color: var(--red); }
             .reactor-container.listening .core-btn { box-shadow: 0 0 80px rgba(255,0,60,0.8); text-shadow: 0 0 10px var(--red); }
 
-            /* Fixed height text box */
-            .text-container { margin-top: 40px; width: 90%; max-width: 600px; height: 130px; background: rgba(0,0,0,0.4); border: 1px solid rgba(0,229,255,0.2); border-radius: 8px; padding: 15px; overflow-y: auto; text-align: center; }
+            /* FIX: Strictly Fixed Height Text Box */
+            .text-container { 
+                margin-top: 40px; 
+                width: 90%; 
+                max-width: 650px; 
+                height: 140px !important; 
+                min-height: 140px; 
+                background: rgba(0,0,0,0.4); 
+                border: 1px solid rgba(0,229,255,0.2); 
+                border-radius: 8px; 
+                padding: 15px; 
+                overflow-y: auto; 
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
             .text-container::-webkit-scrollbar { width: 4px; }
             .text-container::-webkit-scrollbar-thumb { background: var(--cyan); border-radius: 2px; }
-            .speech-readout { font-size: 18px; color: #fff; line-height: 1.6; text-shadow: 0 0 8px rgba(0, 229, 255, 0.5); direction: auto; }
+            .speech-readout { font-size: 18px; color: #fff; line-height: 1.6; text-shadow: 0 0 8px rgba(0, 229, 255, 0.5); text-align: center; margin: 0; }
             
             .input-box { margin-top: 20px; width: 90%; display: flex; gap: 10px; }
             input[type="text"] { flex: 1; background: rgba(0, 0, 0, 0.6); border: 1px solid var(--cyan); border-radius: 6px; padding: 15px; color: #fff; font-size: 16px; font-family: 'Cairo', sans-serif; outline: none; }
             input[type="text"]:focus { box-shadow: 0 0 15px var(--cyan-glow); }
             .log-terminal { font-family: monospace; font-size: 13px; color: #6a9fb5; overflow-y: auto; flex: 1; line-height: 1.7; }
             
-            /* Modal */
-            .modal-overlay { display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; }
-            .modal-content { background: #020610; border: 2px solid var(--cyan); box-shadow: 0 0 50px var(--cyan-glow); padding: 30px; width: 400px; border-radius: 12px; }
+            /* FIX: Modal closes when clicking outside */
+            .modal-overlay { display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; cursor: pointer; }
+            .modal-content { background: #020610; border: 2px solid var(--cyan); box-shadow: 0 0 50px var(--cyan-glow); padding: 30px; width: 400px; border-radius: 12px; cursor: default; }
             
             @keyframes spin { 100% { transform: rotate(360deg); } }
             @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
@@ -217,7 +224,7 @@ async def jarvis_holographic_dashboard():
                     <div class="core-btn" id="core-text">INITIATE<br>VOICE</div>
                 </div>
                 <div class="text-container">
-                    <div class="speech-readout" id="readout">"Systems online, sir. Waiting for your command."</div>
+                    <p class="speech-readout" id="readout">"Systems online, sir. Waiting for your command."</p>
                 </div>
                 <div class="input-box">
                     <input type="text" id="cmd-input" placeholder="Type command here..." onkeypress="if(event.key==='Enter') sendCommand()">
@@ -234,11 +241,12 @@ async def jarvis_holographic_dashboard():
             </div>
         </main>
 
-        <div class="modal-overlay" id="settings-modal">
+        <!-- FIX: Modal onclick closes it -->
+        <div class="modal-overlay" id="settings-modal" onclick="if(event.target === this) closeModal()">
             <div class="modal-content">
                 <h3 style="color:var(--cyan); font-family:'Orbitron'; margin-bottom:20px;">SYSTEM CONFIG</h3>
                 <input type="text" id="key-input" placeholder="Gemini API Key..." style="width:100%; margin-bottom:15px;">
-                <input type="text" id="model-input" value="gemini-1.5-flash" placeholder="Model Name" style="width:100%; margin-bottom:25px;">
+                <input type="text" id="model-input" value="gemini-1.5-flash" placeholder="Model Name (e.g. gemini-1.5-flash)" style="width:100%; margin-bottom:25px;">
                 <div style="display:flex; justify-content:flex-end; gap:10px;">
                     <button class="mic-lang-btn" style="background:transparent;" onclick="closeModal()">CLOSE</button>
                     <button class="mic-lang-btn" onclick="saveApiKey()">SAVE</button>
@@ -249,7 +257,6 @@ async def jarvis_holographic_dashboard():
         <audio id="tts-player" autoplay></audio>
 
         <script>
-            // --- UI Sound Effects (Sci-Fi Beeps) ---
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             function playBeep(freq, type, duration, vol=0.1) {
                 if(audioCtx.state === 'suspended') audioCtx.resume();
@@ -263,7 +270,6 @@ async def jarvis_holographic_dashboard():
             }
             document.querySelectorAll('button').forEach(b => b.addEventListener('click', () => playBeep(800, 'sine', 0.1)));
 
-            // --- Particle Background ---
             const canvas = document.getElementById('canvas-bg');
             const ctx = canvas.getContext('2d');
             canvas.width = window.innerWidth; canvas.height = window.innerHeight;
@@ -287,7 +293,6 @@ async def jarvis_holographic_dashboard():
             }
             drawParticles();
 
-            // --- Logic ---
             const API_KEY = "jinny_live_sec_prod_9948201847192847";
             let micLang = 'ar-EG';
             const readout = document.getElementById("readout");
@@ -365,10 +370,6 @@ async def jarvis_holographic_dashboard():
 
             function startMic() {
                 if (!recognition) return alert("Mic not supported in this browser.");
-                if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'https:') {
-                    alert("Microphone requires localhost or HTTPS.");
-                    return;
-                }
                 playBeep(900, 'sine', 0.2);
                 recognition.lang = micLang;
                 recognition.onstart = () => { reactor.classList.add("listening"); coreText.innerHTML = "LISTENING"; };
@@ -438,7 +439,6 @@ async def jarvis_holographic_dashboard():
     """
     return HTMLResponse(content=html_content)
 
-# ----------------- Core API Endpoints -----------------
 @app.get("/api/health")
 async def health_check():
     return {
