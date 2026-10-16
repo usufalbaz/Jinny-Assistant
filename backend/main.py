@@ -1,5 +1,5 @@
 """
-Jinny Core - Production FastAPI Server & Ultimate Holographic HUD
+Jinny Core - Production FastAPI Server & Ultimate Sci-Fi HUD
 Architected & Engineered by Eng. Yousuf Albaz (AI & Systems Engineer)
 """
 
@@ -90,20 +90,15 @@ async def jarvis_holographic_dashboard():
         <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&family=Cairo:wght@400;700&display=swap" rel="stylesheet">
         <style>
             :root {
-                --cyan: #00f3ff;
-                --cyan-glow: rgba(0, 243, 255, 0.6);
-                --dark-bg: #010409;
-                --panel-bg: rgba(4, 13, 33, 0.6);
-                --red: #ff003c;
+                --cyan: #00e5ff;
+                --cyan-glow: rgba(0, 229, 255, 0.5);
+                --dark-bg: #050914;
+                --panel-bg: rgba(10, 18, 35, 0.75);
+                --red: #ff2a5f;
             }
-            * { box-sizing: border-box; margin: 0; padding: 0; }
+            * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
             body {
                 background-color: var(--dark-bg);
-                background-image: 
-                    radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.05) 0%, transparent 60%),
-                    linear-gradient(rgba(0,243,255,0.03) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(0,243,255,0.03) 1px, transparent 1px);
-                background-size: 100% 100%, 30px 30px, 30px 30px;
                 color: #e2f1ff;
                 font-family: 'Rajdhani', 'Cairo', sans-serif;
                 height: 100vh;
@@ -111,154 +106,75 @@ async def jarvis_holographic_dashboard():
                 display: flex;
                 flex-direction: column;
             }
-            /* CRT Scanline Effect */
+            /* Particle Network Background */
+            #canvas-bg {
+                position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 1; pointer-events: none; opacity: 0.6;
+            }
+            /* Scanlines */
             body::after {
-                content: " ";
-                display: block;
-                position: absolute;
-                top: 0; left: 0; bottom: 0; right: 0;
-                background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-                z-index: 2;
-                background-size: 100% 2px, 3px 100%;
-                pointer-events: none;
+                content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+                background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+                z-index: 2; background-size: 100% 3px; pointer-events: none;
             }
+            header, main, .modal-overlay { z-index: 10; position: relative; }
             header {
-                padding: 15px 40px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border-bottom: 1px solid rgba(0, 243, 255, 0.3);
-                background: linear-gradient(90deg, rgba(0,243,255,0.1) 0%, transparent 50%, rgba(0,243,255,0.1) 100%);
-                z-index: 10;
+                padding: 15px 40px; display: flex; justify-content: space-between; align-items: center;
+                border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+                background: linear-gradient(90deg, rgba(0,229,255,0.05) 0%, transparent 50%, rgba(0,229,255,0.05) 100%);
             }
-            .logo {
-                font-family: 'Orbitron', sans-serif;
-                font-size: 26px;
-                font-weight: 900;
-                letter-spacing: 4px;
-                color: var(--cyan);
-                text-shadow: 0 0 20px var(--cyan-glow);
-            }
+            .logo { font-family: 'Orbitron', sans-serif; font-size: 26px; font-weight: 900; letter-spacing: 4px; color: var(--cyan); text-shadow: 0 0 15px var(--cyan-glow); }
             .header-controls { display: flex; gap: 15px; align-items: center; }
             .mic-lang-btn {
-                background: transparent;
-                border: 1px solid var(--cyan);
-                color: var(--cyan);
-                padding: 5px 15px;
-                border-radius: 4px;
-                cursor: pointer;
-                font-family: 'Orbitron', sans-serif;
-                font-weight: bold;
-                transition: 0.3s;
+                background: rgba(0, 229, 255, 0.05); border: 1px solid var(--cyan); color: var(--cyan);
+                padding: 6px 18px; border-radius: 4px; cursor: pointer; font-family: 'Orbitron', sans-serif; font-weight: bold; transition: 0.3s;
             }
-            .mic-lang-btn:hover { background: var(--cyan); color: #000; }
-            main {
-                flex: 1;
-                display: grid;
-                grid-template-columns: 350px 1fr 350px;
-                gap: 30px;
-                padding: 30px;
-                z-index: 10;
-            }
+            .mic-lang-btn:hover { background: var(--cyan); color: #000; box-shadow: 0 0 15px var(--cyan-glow); }
+            main { flex: 1; display: grid; grid-template-columns: 350px 1fr 350px; gap: 30px; padding: 30px; }
             .hud-card {
-                background: var(--panel-bg);
-                border: 1px solid rgba(0, 243, 255, 0.2);
-                border-radius: 16px;
-                padding: 25px;
-                backdrop-filter: blur(15px);
-                box-shadow: 0 0 30px rgba(0, 243, 255, 0.05) inset;
-                display: flex;
-                flex-direction: column;
-                position: relative;
+                background: var(--panel-bg); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 16px; padding: 25px;
+                backdrop-filter: blur(10px); box-shadow: 0 0 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; position: relative;
             }
-            /* Sci-Fi Corner Accents */
-            .hud-card::before, .hud-card::after {
-                content: ''; position: absolute; width: 20px; height: 20px; border: 2px solid var(--cyan);
-            }
+            .hud-card::before, .hud-card::after { content: ''; position: absolute; width: 20px; height: 20px; border: 2px solid var(--cyan); }
             .hud-card::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
             .hud-card::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
-            
-            .card-title {
-                font-family: 'Orbitron', sans-serif;
-                font-size: 14px;
-                letter-spacing: 3px;
-                color: var(--cyan);
-                margin-bottom: 20px;
-                border-bottom: 1px solid rgba(0, 243, 255, 0.3);
-                padding-bottom: 10px;
-                text-shadow: 0 0 10px var(--cyan-glow);
-            }
-            .device-row {
-                display: flex; justify-content: space-between; align-items: center;
-                padding: 15px; margin-bottom: 12px;
-                background: rgba(0, 243, 255, 0.05);
-                border: 1px solid rgba(0, 243, 255, 0.1);
-                border-radius: 8px;
-                transition: 0.3s;
-            }
-            .device-row:hover { border-color: var(--cyan); box-shadow: 0 0 15px rgba(0,243,255,0.2) inset; }
-            .toggle-btn {
-                padding: 6px 18px; font-family: 'Orbitron', sans-serif; font-weight: bold;
-                border-radius: 4px; cursor: pointer; border: 1px solid; transition: 0.3s;
-            }
+            .card-title { font-family: 'Orbitron', sans-serif; font-size: 14px; letter-spacing: 3px; color: var(--cyan); margin-bottom: 20px; border-bottom: 1px dashed rgba(0, 229, 255, 0.3); padding-bottom: 10px; }
+            .device-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; margin-bottom: 12px; background: rgba(0, 229, 255, 0.03); border: 1px solid rgba(0, 229, 255, 0.1); border-radius: 8px; transition: 0.3s; }
+            .device-row:hover { border-color: var(--cyan); background: rgba(0, 229, 255, 0.08); }
+            .toggle-btn { padding: 6px 18px; font-family: 'Orbitron', sans-serif; font-weight: bold; border-radius: 4px; cursor: pointer; border: 1px solid; transition: 0.3s; }
             .toggle-btn.on { background: var(--cyan); color: #000; border-color: var(--cyan); box-shadow: 0 0 15px var(--cyan-glow); }
             .toggle-btn.off { background: transparent; color: #557; border-color: #335; }
             .toggle-btn:disabled { opacity: 0.5; cursor: not-allowed; }
             
-            /* Center Arc Reactor 3D */
+            /* Arc Reactor 3D */
             .center-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; }
             .reactor-container { position: relative; width: 260px; height: 260px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
             .ring { position: absolute; border-radius: 50%; border: 2px solid transparent; }
             .ring-1 { width: 260px; height: 260px; border-top: 2px solid var(--cyan); border-bottom: 2px solid var(--cyan); animation: spin 8s linear infinite; }
             .ring-2 { width: 230px; height: 230px; border-left: 2px dashed var(--cyan); border-right: 2px dashed var(--cyan); animation: spin-reverse 12s linear infinite; }
-            .ring-3 { width: 200px; height: 200px; border: 3px solid rgba(0, 243, 255, 0.3); box-shadow: 0 0 40px var(--cyan-glow) inset; }
+            .ring-3 { width: 200px; height: 200px; border: 3px solid rgba(0, 229, 255, 0.2); box-shadow: 0 0 40px var(--cyan-glow) inset; }
             .core-btn {
-                width: 140px; height: 140px; background: rgba(0, 243, 255, 0.1); border-radius: 50%;
-                display: flex; justify-content: center; align-items: center;
-                font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 900; letter-spacing: 2px;
-                color: #fff; text-shadow: 0 0 10px var(--cyan); box-shadow: 0 0 50px var(--cyan-glow);
+                width: 140px; height: 140px; background: rgba(0, 229, 255, 0.1); border-radius: 50%; display: flex; justify-content: center; align-items: center;
+                font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 900; letter-spacing: 2px; color: #fff; text-shadow: 0 0 10px var(--cyan); box-shadow: 0 0 50px var(--cyan-glow);
                 transition: 0.3s; z-index: 5; text-align: center; line-height: 1.5;
             }
-            .reactor-container:hover .core-btn { transform: scale(1.1); background: rgba(0, 243, 255, 0.2); }
+            .reactor-container:hover .core-btn { transform: scale(1.1); background: rgba(0, 229, 255, 0.2); }
             .reactor-container.listening .ring-1 { border-color: var(--red); animation: spin 2s linear infinite; }
             .reactor-container.listening .ring-2 { border-color: var(--red); }
             .reactor-container.listening .core-btn { box-shadow: 0 0 80px rgba(255,0,60,0.8); text-shadow: 0 0 10px var(--red); }
 
             /* Fixed height text box */
-            .text-container {
-                margin-top: 40px;
-                width: 90%;
-                max-width: 600px;
-                height: 120px; /* Fixed height to prevent pushing down */
-                background: rgba(0,0,0,0.4);
-                border: 1px solid rgba(0,243,255,0.2);
-                border-radius: 8px;
-                padding: 15px;
-                overflow-y: auto;
-                text-align: center;
-            }
-            /* Custom Scrollbar */
-            .text-container::-webkit-scrollbar { width: 6px; }
-            .text-container::-webkit-scrollbar-thumb { background: var(--cyan); border-radius: 3px; }
+            .text-container { margin-top: 40px; width: 90%; max-width: 600px; height: 130px; background: rgba(0,0,0,0.4); border: 1px solid rgba(0,229,255,0.2); border-radius: 8px; padding: 15px; overflow-y: auto; text-align: center; }
+            .text-container::-webkit-scrollbar { width: 4px; }
+            .text-container::-webkit-scrollbar-thumb { background: var(--cyan); border-radius: 2px; }
+            .speech-readout { font-size: 18px; color: #fff; line-height: 1.6; text-shadow: 0 0 8px rgba(0, 229, 255, 0.5); direction: auto; }
             
-            .speech-readout {
-                font-size: 18px;
-                color: #fff;
-                line-height: 1.6;
-                text-shadow: 0 0 8px rgba(0, 243, 255, 0.5);
-                direction: auto; /* Supports Arabic RTL */
-            }
             .input-box { margin-top: 20px; width: 90%; display: flex; gap: 10px; }
-            input[type="text"] {
-                flex: 1; background: rgba(0, 0, 0, 0.6); border: 1px solid var(--cyan);
-                border-radius: 6px; padding: 15px; color: #fff; font-size: 16px; font-family: 'Cairo', sans-serif;
-            }
-            .action-btn { background: rgba(0, 243, 255, 0.2); border: 1px solid var(--cyan); color: var(--cyan); padding: 0 25px; font-family: 'Orbitron'; font-weight: bold; cursor: pointer; border-radius: 6px; transition: 0.3s;}
-            .action-btn:hover { background: var(--cyan); color: #000; }
+            input[type="text"] { flex: 1; background: rgba(0, 0, 0, 0.6); border: 1px solid var(--cyan); border-radius: 6px; padding: 15px; color: #fff; font-size: 16px; font-family: 'Cairo', sans-serif; outline: none; }
+            input[type="text"]:focus { box-shadow: 0 0 15px var(--cyan-glow); }
             .log-terminal { font-family: monospace; font-size: 13px; color: #6a9fb5; overflow-y: auto; flex: 1; line-height: 1.7; }
             
             /* Modal */
-            .modal-overlay { display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
+            .modal-overlay { display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; }
             .modal-content { background: #020610; border: 2px solid var(--cyan); box-shadow: 0 0 50px var(--cyan-glow); padding: 30px; width: 400px; border-radius: 12px; }
             
             @keyframes spin { 100% { transform: rotate(360deg); } }
@@ -266,6 +182,8 @@ async def jarvis_holographic_dashboard():
         </style>
     </head>
     <body>
+        <canvas id="canvas-bg"></canvas>
+
         <header>
             <div class="logo">⚡ JINNY // OS</div>
             <div class="header-controls">
@@ -275,7 +193,6 @@ async def jarvis_holographic_dashboard():
         </header>
 
         <main>
-            <!-- Left: IoT -->
             <div class="hud-card">
                 <div class="card-title">HARDWARE LINK</div>
                 <div class="device-row">
@@ -292,7 +209,6 @@ async def jarvis_holographic_dashboard():
                 </div>
             </div>
 
-            <!-- Center: Hologram -->
             <div class="center-stage">
                 <div class="reactor-container" id="reactor" onclick="startMic()">
                     <div class="ring ring-1"></div>
@@ -300,20 +216,15 @@ async def jarvis_holographic_dashboard():
                     <div class="ring ring-3"></div>
                     <div class="core-btn" id="core-text">INITIATE<br>VOICE</div>
                 </div>
-
                 <div class="text-container">
-                    <div class="speech-readout" id="readout">
-                        "Systems online, sir. Waiting for your command."
-                    </div>
+                    <div class="speech-readout" id="readout">"Systems online, sir. Waiting for your command."</div>
                 </div>
-
                 <div class="input-box">
                     <input type="text" id="cmd-input" placeholder="Type command here..." onkeypress="if(event.key==='Enter') sendCommand()">
-                    <button class="action-btn" onclick="sendCommand()">SEND</button>
+                    <button class="mic-lang-btn" onclick="sendCommand()">SEND</button>
                 </div>
             </div>
 
-            <!-- Right: Logs -->
             <div class="hud-card">
                 <div class="card-title">SYSTEM LOGS</div>
                 <div class="log-terminal" id="term-logs">
@@ -323,15 +234,14 @@ async def jarvis_holographic_dashboard():
             </div>
         </main>
 
-        <!-- Settings Modal -->
         <div class="modal-overlay" id="settings-modal">
             <div class="modal-content">
                 <h3 style="color:var(--cyan); font-family:'Orbitron'; margin-bottom:20px;">SYSTEM CONFIG</h3>
                 <input type="text" id="key-input" placeholder="Gemini API Key..." style="width:100%; margin-bottom:15px;">
-                <input type="text" id="model-input" value="gemini-3.5-flash-lite" placeholder="Model Name" style="width:100%; margin-bottom:25px;">
+                <input type="text" id="model-input" value="gemini-1.5-flash" placeholder="Model Name" style="width:100%; margin-bottom:25px;">
                 <div style="display:flex; justify-content:flex-end; gap:10px;">
-                    <button class="action-btn" style="background:transparent;" onclick="closeModal()">CLOSE</button>
-                    <button class="action-btn" onclick="saveApiKey()">SAVE</button>
+                    <button class="mic-lang-btn" style="background:transparent;" onclick="closeModal()">CLOSE</button>
+                    <button class="mic-lang-btn" onclick="saveApiKey()">SAVE</button>
                 </div>
             </div>
         </div>
@@ -339,8 +249,47 @@ async def jarvis_holographic_dashboard():
         <audio id="tts-player" autoplay></audio>
 
         <script>
+            // --- UI Sound Effects (Sci-Fi Beeps) ---
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            function playBeep(freq, type, duration, vol=0.1) {
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type; osc.frequency.value = freq;
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.start(); osc.stop(audioCtx.currentTime + duration);
+            }
+            document.querySelectorAll('button').forEach(b => b.addEventListener('click', () => playBeep(800, 'sine', 0.1)));
+
+            // --- Particle Background ---
+            const canvas = document.getElementById('canvas-bg');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            const particles = [];
+            for(let i=0; i<80; i++) particles.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, vx: (Math.random()-0.5)*0.5, vy: (Math.random()-0.5)*0.5});
+            function drawParticles() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = 'rgba(0, 229, 255, 0.5)';
+                ctx.strokeStyle = 'rgba(0, 229, 255, 0.1)';
+                particles.forEach(p => {
+                    p.x += p.vx; p.y += p.vy;
+                    if(p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                    if(p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI*2); ctx.fill();
+                    particles.forEach(p2 => {
+                        const dist = Math.hypot(p.x-p2.x, p.y-p2.y);
+                        if(dist < 100) { ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); }
+                    });
+                });
+                requestAnimationFrame(drawParticles);
+            }
+            drawParticles();
+
+            // --- Logic ---
             const API_KEY = "jinny_live_sec_prod_9948201847192847";
-            let micLang = 'ar-EG'; // Default to Arabic as requested
+            let micLang = 'ar-EG';
             const readout = document.getElementById("readout");
             const logs = document.getElementById("term-logs");
             const player = document.getElementById("tts-player");
@@ -357,6 +306,7 @@ async def jarvis_holographic_dashboard():
                 const btn = document.getElementById("lang-btn");
                 if(micLang === 'ar-EG') { micLang = 'en-US'; btn.innerText = "MIC: ENGLISH"; }
                 else { micLang = 'ar-EG'; btn.innerText = "MIC: ARABIC"; }
+                playBeep(1200, 'square', 0.1);
                 log(`Microphone language switched to ${micLang}`);
             }
 
@@ -380,6 +330,7 @@ async def jarvis_holographic_dashboard():
                 if(!queryText.trim()) return;
                 readout.innerText = `Processing: "${queryText}"...`;
                 log(`USER: ${queryText}`);
+                playBeep(400, 'sawtooth', 0.2);
                 
                 try {
                     const res = await fetch("/api/assistant/interact", {
@@ -405,7 +356,6 @@ async def jarvis_holographic_dashboard():
                 input.value = "";
             }
 
-            // Voice Recognition
             let recognition;
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -415,21 +365,15 @@ async def jarvis_holographic_dashboard():
 
             function startMic() {
                 if (!recognition) return alert("Mic not supported in this browser.");
-                // Note: Chrome requires HTTPS or localhost for microphone access
                 if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'https:') {
-                    alert("Microphone requires localhost or HTTPS. Please type your command instead.");
+                    alert("Microphone requires localhost or HTTPS.");
                     return;
                 }
+                playBeep(900, 'sine', 0.2);
                 recognition.lang = micLang;
-                recognition.onstart = () => {
-                    reactor.classList.add("listening");
-                    coreText.innerHTML = "LISTENING";
-                };
+                recognition.onstart = () => { reactor.classList.add("listening"); coreText.innerHTML = "LISTENING"; };
                 recognition.onresult = (e) => { processQuery(e.results[0][0].transcript); };
-                recognition.onend = () => {
-                    reactor.classList.remove("listening");
-                    coreText.innerHTML = "INITIATE<br>VOICE";
-                };
+                recognition.onend = () => { reactor.classList.remove("listening"); coreText.innerHTML = "INITIATE<br>VOICE"; };
                 try { recognition.start(); } catch(e) { log("Mic error: " + e.message); }
             }
 
@@ -460,11 +404,9 @@ async def jarvis_holographic_dashboard():
                 try {
                     const res = await fetch("/api/iot/devices", { headers: { "X-Jinny-Api-Key": API_KEY } });
                     currentDevices = await res.json();
-                    
                     const light = document.getElementById("btn-light");
                     if (currentDevices.living_room_light?.state === "on") { light.className = "toggle-btn on"; light.innerText = "ON"; } 
                     else { light.className = "toggle-btn off"; light.innerText = "OFF"; }
-
                     const lock = document.getElementById("btn-lock");
                     if (currentDevices.smart_lock?.state === "unlocked") { lock.className = "toggle-btn off"; lock.innerText = "UNLOCKED"; } 
                     else { lock.className = "toggle-btn on"; lock.innerText = "LOCKED"; }
@@ -472,8 +414,8 @@ async def jarvis_holographic_dashboard():
             }
             setInterval(fetchDevices, 3000); fetchDevices();
 
-            function openModal() { document.getElementById("settings-modal").style.display = "flex"; }
-            function closeModal() { document.getElementById("settings-modal").style.display = "none"; }
+            function openModal() { document.getElementById("settings-modal").style.display = "flex"; playBeep(600, 'sine', 0.1); }
+            function closeModal() { document.getElementById("settings-modal").style.display = "none"; playBeep(400, 'sine', 0.1); }
             
             async function saveApiKey() {
                 const key = document.getElementById("key-input").value.trim();
@@ -496,8 +438,15 @@ async def jarvis_holographic_dashboard():
     """
     return HTMLResponse(content=html_content)
 
+# ----------------- Core API Endpoints -----------------
 @app.get("/api/health")
-async def health_check(): return {"status": "healthy"}
+async def health_check():
+    return {
+        "status": "healthy",
+        "system": "Jinny Core",
+        "version": settings.VERSION,
+        "author": "Eng. Yousuf Albaz"
+    }
 
 @app.post("/api/assistant/interact", dependencies=[Depends(verify_api_key)])
 async def interact_with_assistant(req: QueryRequest):
@@ -514,3 +463,36 @@ async def list_iot_devices(): return iot_controller.list_devices()
 @app.post("/api/iot/execute", dependencies=[Depends(verify_api_key)])
 async def execute_iot_command(req: IoTCommandRequest):
     return await iot_controller.execute_device_command(req.device_id, req.action, req.params)
+
+@app.post("/api/proactive/trigger", dependencies=[Depends(verify_api_key)])
+async def trigger_proactive_briefing():
+    briefing = await proactive_agent.generate_system_briefing()
+    await proactive_agent._broadcast_voice_briefing(briefing)
+    return {"status": "broadcasted", "briefing": briefing}
+
+@app.websocket("/ws/android-bridge")
+async def android_telemetry_bridge(
+    websocket: WebSocket,
+    client_id: str = Query("android_primary"),
+    token: Optional[str] = Query(None)
+):
+    if not settings.DEBUG and token != settings.JINNY_API_KEY:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+    await websocket.accept()
+    sms_dispatcher.register_android_client(client_id, websocket)
+    await sms_dispatcher.flush_queued_tasks_for_client(websocket)
+    try:
+        while True:
+            data = await websocket.receive_json()
+            command = data.get("type")
+            if command == "HEARTBEAT":
+                await websocket.send_json({"type": "PONG", "timestamp": data.get("timestamp")})
+            elif command == "VOICE_STREAM_INPUT":
+                text = data.get("text", "")
+                res = await assistant_core.process_user_intent(text)
+                await websocket.send_json({"type": "ASSISTANT_REPLY", "data": res})
+            elif command == "SMS_DELIVERY_REPORT":
+                sms_dispatcher.record_delivery_report(data.get("task_id"), data.get("status"), data.get("error"))
+    except WebSocketDisconnect:
+        sms_dispatcher.unregister_android_client(client_id)
