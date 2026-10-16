@@ -1,13 +1,12 @@
 """
-Jinny Core - Production FastAPI Server & Stark Industries Interactive HUD
+Jinny Core - Production FastAPI Server & Ultimate Holographic HUD
 Architected & Engineered by Eng. Yousuf Albaz (AI & Systems Engineer)
 """
 
 import logging
 import os
-import json
 from contextlib import asynccontextmanager
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Security, status, Query
 from fastapi.responses import Response, HTMLResponse
@@ -24,10 +23,7 @@ from core.assistant import JinnyAssistantCore
 from core.voice_engine import NeuralVoiceEngine
 from core.proactive_agent import ProactiveAutonomousAgent
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)-7s | %(name)s : %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)-7s | %(name)s : %(message)s")
 logger = logging.getLogger("Jinny.Server")
 
 memory_store = PersistentMemoryStore()
@@ -37,103 +33,51 @@ voice_engine = NeuralVoiceEngine()
 assistant_core = JinnyAssistantCore(memory_store, sms_dispatcher, iot_controller)
 proactive_agent = ProactiveAutonomousAgent(memory_store, iot_controller, sms_dispatcher)
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Initializing Jinny Core Enterprise Subsystems...")
     await memory_store.initialize()
     await proactive_agent.start()
-    logger.info(f"Jinny Core online and listening on {settings.HOST}:{settings.PORT}")
     yield
-    logger.info("Gracefully shutting down Jinny Core services...")
     await proactive_agent.stop()
-    logger.info("Jinny Core services stopped.")
 
+app = FastAPI(title="Jinny Core AI Gateway", version=settings.VERSION, lifespan=lifespan)
 
-app = FastAPI(
-    title="Jinny Core AI Assistant Gateway",
-    version=settings.VERSION,
-    lifespan=lifespan
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 api_key_header = APIKeyHeader(name=settings.API_KEY_HEADER, auto_error=False)
 
-
 async def verify_api_key(api_key: Optional[str] = Security(api_key_header)):
-    if settings.DEBUG:
-        return True
+    if settings.DEBUG: return True
     if not api_key or api_key != settings.JINNY_API_KEY:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing Jinny API Key"
-        )
+        raise HTTPException(status_code=401, detail="Unauthorized")
     return True
-
 
 class QueryRequest(BaseModel):
     query: str
-    client_id: Optional[str] = "web_console"
     metadata: Optional[Dict[str, Any]] = None
-
 
 class VoiceSynthesizeRequest(BaseModel):
     text: str
     voice: Optional[str] = None
-
 
 class IoTCommandRequest(BaseModel):
     device_id: str
     action: str
     params: Optional[Dict[str, Any]] = None
 
-
 class ApiKeyUpdateRequest(BaseModel):
     gemini_api_key: str
     gemini_model: str
 
-
-# ----------------- Dynamic Settings Endpoint -----------------
 @app.post("/api/settings/gemini-key")
 async def update_gemini_api_key(req: ApiKeyUpdateRequest):
-    """Dynamically set and activate Gemini API Key and Model from the web dashboard."""
-    key = req.gemini_api_key.strip()
-    model = req.gemini_model.strip()
-    
-    if not key:
-        raise HTTPException(status_code=400, detail="API key cannot be empty.")
-    if not model:
-        raise HTTPException(status_code=400, detail="Model name cannot be empty.")
+    settings.GEMINI_API_KEY = req.gemini_api_key.strip()
+    settings.GEMINI_MODEL = req.gemini_model.strip()
+    assistant_core.client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    memory_store.client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    return {"status": "success"}
 
-    # Update global settings dynamically
-    settings.GEMINI_API_KEY = key
-    settings.GEMINI_MODEL = model
-    
-    # Re-initialize AI clients with new key
-    assistant_core.client = genai.Client(api_key=key)
-    memory_store.client = genai.Client(api_key=key)
-
-    # Persist key and model to .env file
-    try:
-        env_path = os.path.join(os.path.dirname(__file__), ".env")
-        with open(env_path, "w") as f:
-            f.write(f"GEMINI_API_KEY={key}\n")
-            f.write(f"GEMINI_MODEL={model}\n")
-    except Exception as e:
-        logger.warning(f"Could not write .env file: {e}")
-
-    logger.info(f"Gemini AI Core activated with model: {model}")
-    return {"status": "success", "message": f"AI Core online using {model}!"}
-
-
-# ----------------- The Holographic Jarvis Web HUD -----------------
+# ----------------- THE ULTIMATE JARVIS HUD -----------------
 @app.get("/", response_class=HTMLResponse)
 async def jarvis_holographic_dashboard():
     html_content = """
@@ -142,288 +86,252 @@ async def jarvis_holographic_dashboard():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>JINNY // JARVIS CORE</title>
-        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+        <title>JINNY // STARK OS</title>
+        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&family=Cairo:wght@400;700&display=swap" rel="stylesheet">
         <style>
             :root {
-                --cyan: #00f0ff;
-                --cyan-glow: rgba(0, 240, 255, 0.45);
-                --dark: #040814;
-                --panel: rgba(8, 18, 38, 0.85);
-                --red: #ff3366;
-                --green: #00ff88;
+                --cyan: #00f3ff;
+                --cyan-glow: rgba(0, 243, 255, 0.6);
+                --dark-bg: #010409;
+                --panel-bg: rgba(4, 13, 33, 0.6);
+                --red: #ff003c;
             }
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body {
-                background: radial-gradient(circle at center, #0d1a33 0%, #030611 100%);
+                background-color: var(--dark-bg);
+                background-image: 
+                    radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.05) 0%, transparent 60%),
+                    linear-gradient(rgba(0,243,255,0.03) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0,243,255,0.03) 1px, transparent 1px);
+                background-size: 100% 100%, 30px 30px, 30px 30px;
                 color: #e2f1ff;
-                font-family: 'Rajdhani', sans-serif;
+                font-family: 'Rajdhani', 'Cairo', sans-serif;
                 height: 100vh;
                 overflow: hidden;
                 display: flex;
                 flex-direction: column;
             }
+            /* CRT Scanline Effect */
+            body::after {
+                content: " ";
+                display: block;
+                position: absolute;
+                top: 0; left: 0; bottom: 0; right: 0;
+                background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+                z-index: 2;
+                background-size: 100% 2px, 3px 100%;
+                pointer-events: none;
+            }
             header {
-                padding: 16px 36px;
+                padding: 15px 40px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                border-bottom: 1px solid rgba(0, 240, 255, 0.2);
-                background: rgba(4, 8, 20, 0.9);
+                border-bottom: 1px solid rgba(0, 243, 255, 0.3);
+                background: linear-gradient(90deg, rgba(0,243,255,0.1) 0%, transparent 50%, rgba(0,243,255,0.1) 100%);
+                z-index: 10;
             }
             .logo {
                 font-family: 'Orbitron', sans-serif;
-                font-size: 24px;
+                font-size: 26px;
                 font-weight: 900;
-                letter-spacing: 3px;
+                letter-spacing: 4px;
                 color: var(--cyan);
-                text-shadow: 0 0 15px var(--cyan-glow);
+                text-shadow: 0 0 20px var(--cyan-glow);
             }
-            .header-controls { display: flex; gap: 14px; align-items: center; }
-            .status-pill {
-                font-size: 12px;
-                letter-spacing: 2px;
-                padding: 6px 14px;
-                border: 1px solid var(--cyan);
-                border-radius: 20px;
-                color: var(--cyan);
-                box-shadow: 0 0 10px var(--cyan-glow);
-            }
-            .settings-btn {
-                background: rgba(0, 240, 255, 0.1);
+            .header-controls { display: flex; gap: 15px; align-items: center; }
+            .mic-lang-btn {
+                background: transparent;
                 border: 1px solid var(--cyan);
                 color: var(--cyan);
-                padding: 6px 12px;
-                border-radius: 8px;
+                padding: 5px 15px;
+                border-radius: 4px;
                 cursor: pointer;
                 font-family: 'Orbitron', sans-serif;
-                font-size: 13px;
-                transition: all 0.2s;
+                font-weight: bold;
+                transition: 0.3s;
             }
-            .settings-btn:hover { background: var(--cyan); color: #000; }
+            .mic-lang-btn:hover { background: var(--cyan); color: #000; }
             main {
                 flex: 1;
                 display: grid;
-                grid-template-columns: 340px 1fr 340px;
-                gap: 20px;
-                padding: 20px;
-                height: calc(100vh - 75px);
+                grid-template-columns: 350px 1fr 350px;
+                gap: 30px;
+                padding: 30px;
+                z-index: 10;
             }
             .hud-card {
-                background: var(--panel);
-                border: 1px solid rgba(0, 240, 255, 0.25);
-                border-radius: 12px;
-                padding: 20px;
-                backdrop-filter: blur(12px);
-                box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+                background: var(--panel-bg);
+                border: 1px solid rgba(0, 243, 255, 0.2);
+                border-radius: 16px;
+                padding: 25px;
+                backdrop-filter: blur(15px);
+                box-shadow: 0 0 30px rgba(0, 243, 255, 0.05) inset;
                 display: flex;
                 flex-direction: column;
+                position: relative;
             }
+            /* Sci-Fi Corner Accents */
+            .hud-card::before, .hud-card::after {
+                content: ''; position: absolute; width: 20px; height: 20px; border: 2px solid var(--cyan);
+            }
+            .hud-card::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+            .hud-card::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+            
             .card-title {
                 font-family: 'Orbitron', sans-serif;
-                font-size: 13px;
-                letter-spacing: 2px;
+                font-size: 14px;
+                letter-spacing: 3px;
                 color: var(--cyan);
-                margin-bottom: 16px;
-                border-bottom: 1px dashed rgba(0, 240, 255, 0.25);
-                padding-bottom: 8px;
+                margin-bottom: 20px;
+                border-bottom: 1px solid rgba(0, 243, 255, 0.3);
+                padding-bottom: 10px;
+                text-shadow: 0 0 10px var(--cyan-glow);
             }
             .device-row {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 12px;
-                margin-bottom: 10px;
-                background: rgba(0, 240, 255, 0.04);
-                border: 1px solid rgba(0, 240, 255, 0.12);
+                display: flex; justify-content: space-between; align-items: center;
+                padding: 15px; margin-bottom: 12px;
+                background: rgba(0, 243, 255, 0.05);
+                border: 1px solid rgba(0, 243, 255, 0.1);
                 border-radius: 8px;
+                transition: 0.3s;
             }
-            .device-name { font-weight: 700; font-size: 15px; }
+            .device-row:hover { border-color: var(--cyan); box-shadow: 0 0 15px rgba(0,243,255,0.2) inset; }
             .toggle-btn {
-                padding: 5px 14px;
-                font-family: 'Orbitron', sans-serif;
-                font-size: 11px;
-                border-radius: 6px;
-                cursor: pointer;
-                border: 1px solid;
-                transition: all 0.2s;
+                padding: 6px 18px; font-family: 'Orbitron', sans-serif; font-weight: bold;
+                border-radius: 4px; cursor: pointer; border: 1px solid; transition: 0.3s;
             }
-            .toggle-btn.on { background: var(--cyan); color: #000; border-color: var(--cyan); box-shadow: 0 0 10px var(--cyan-glow); }
-            .toggle-btn.off { background: transparent; color: #8899aa; border-color: #445566; }
-            .climate-ctrl { display: flex; gap: 8px; align-items: center; }
-            .ctrl-btn { background: rgba(0,240,255,0.15); border: 1px solid var(--cyan); color: #fff; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-            .center-stage {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                position: relative;
+            .toggle-btn.on { background: var(--cyan); color: #000; border-color: var(--cyan); box-shadow: 0 0 15px var(--cyan-glow); }
+            .toggle-btn.off { background: transparent; color: #557; border-color: #335; }
+            .toggle-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+            
+            /* Center Arc Reactor 3D */
+            .center-stage { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+            .reactor-container { position: relative; width: 260px; height: 260px; display: flex; justify-content: center; align-items: center; cursor: pointer; }
+            .ring { position: absolute; border-radius: 50%; border: 2px solid transparent; }
+            .ring-1 { width: 260px; height: 260px; border-top: 2px solid var(--cyan); border-bottom: 2px solid var(--cyan); animation: spin 8s linear infinite; }
+            .ring-2 { width: 230px; height: 230px; border-left: 2px dashed var(--cyan); border-right: 2px dashed var(--cyan); animation: spin-reverse 12s linear infinite; }
+            .ring-3 { width: 200px; height: 200px; border: 3px solid rgba(0, 243, 255, 0.3); box-shadow: 0 0 40px var(--cyan-glow) inset; }
+            .core-btn {
+                width: 140px; height: 140px; background: rgba(0, 243, 255, 0.1); border-radius: 50%;
+                display: flex; justify-content: center; align-items: center;
+                font-family: 'Orbitron', sans-serif; font-size: 14px; font-weight: 900; letter-spacing: 2px;
+                color: #fff; text-shadow: 0 0 10px var(--cyan); box-shadow: 0 0 50px var(--cyan-glow);
+                transition: 0.3s; z-index: 5; text-align: center; line-height: 1.5;
             }
-            .arc-reactor {
-                width: 230px;
-                height: 230px;
-                border-radius: 50%;
-                border: 3px solid var(--cyan);
-                box-shadow: 0 0 50px var(--cyan-glow), inset 0 0 35px var(--cyan-glow);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                position: relative;
-                cursor: pointer;
-                transition: all 0.3s;
-            }
-            .arc-reactor:hover { transform: scale(1.04); }
-            .arc-reactor.active { border-color: var(--red); box-shadow: 0 0 70px rgba(255, 51, 102, 0.7); }
-            .arc-inner-ring {
-                width: 180px;
-                height: 180px;
-                border-radius: 50%;
-                border: 2px dashed rgba(0, 240, 255, 0.7);
-                animation: rotate 12s linear infinite;
-            }
-            .arc-core-text {
-                position: absolute;
-                font-family: 'Orbitron', sans-serif;
-                font-size: 13px;
-                font-weight: 700;
-                color: #fff;
-                letter-spacing: 2px;
-                text-align: center;
-            }
-            #wave-canvas { width: 300px; height: 60px; margin-top: 20px; }
-            .speech-readout {
-                margin-top: 15px;
-                width: 85%;
-                max-width: 650px;
-                text-align: center;
-                font-size: 19px;
-                color: #cce7ff;
-                min-height: 55px;
-                line-height: 1.5;
-                text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
-            }
-            .input-box { margin-top: 20px; width: 80%; display: flex; gap: 12px; }
-            input[type="text"] {
-                flex: 1;
-                background: rgba(0, 0, 0, 0.5);
-                border: 1px solid rgba(0, 240, 255, 0.3);
-                border-radius: 8px;
-                padding: 12px 18px;
-                color: #fff;
-                font-family: 'Rajdhani', sans-serif;
-                font-size: 16px;
-                outline: none;
-            }
-            input[type="text"]:focus { border-color: var(--cyan); box-shadow: 0 0 12px var(--cyan-glow); }
-            .action-btn {
-                background: rgba(0, 240, 255, 0.18);
-                border: 1px solid var(--cyan);
-                color: var(--cyan);
-                font-family: 'Orbitron', sans-serif;
-                font-size: 12px;
-                letter-spacing: 1px;
-                padding: 0 24px;
-                border-radius: 8px;
-                cursor: pointer;
-            }
-            .action-btn:hover { background: var(--cyan); color: #000; }
-            .log-terminal { font-family: monospace; font-size: 12px; color: #79a8d0; overflow-y: auto; flex: 1; line-height: 1.6; }
-            .modal-overlay {
-                display: none;
-                position: fixed;
-                top: 0; left: 0; width: 100vw; height: 100vh;
-                background: rgba(0,0,0,0.85);
-                backdrop-filter: blur(8px);
-                justify-content: center;
-                align-items: center;
-                z-index: 1000;
-            }
-            .modal-content {
-                background: #081226;
-                border: 2px solid var(--cyan);
-                box-shadow: 0 0 40px var(--cyan-glow);
-                border-radius: 12px;
-                padding: 30px;
+            .reactor-container:hover .core-btn { transform: scale(1.1); background: rgba(0, 243, 255, 0.2); }
+            .reactor-container.listening .ring-1 { border-color: var(--red); animation: spin 2s linear infinite; }
+            .reactor-container.listening .ring-2 { border-color: var(--red); }
+            .reactor-container.listening .core-btn { box-shadow: 0 0 80px rgba(255,0,60,0.8); text-shadow: 0 0 10px var(--red); }
+
+            /* Fixed height text box */
+            .text-container {
+                margin-top: 40px;
                 width: 90%;
-                max-width: 480px;
+                max-width: 600px;
+                height: 120px; /* Fixed height to prevent pushing down */
+                background: rgba(0,0,0,0.4);
+                border: 1px solid rgba(0,243,255,0.2);
+                border-radius: 8px;
+                padding: 15px;
+                overflow-y: auto;
+                text-align: center;
             }
-            .input-label { font-size: 13px; color: var(--cyan); margin-bottom: 6px; display: block; font-family: 'Orbitron', sans-serif; }
-            @keyframes rotate { 100% { transform: rotate(360deg); } }
+            /* Custom Scrollbar */
+            .text-container::-webkit-scrollbar { width: 6px; }
+            .text-container::-webkit-scrollbar-thumb { background: var(--cyan); border-radius: 3px; }
+            
+            .speech-readout {
+                font-size: 18px;
+                color: #fff;
+                line-height: 1.6;
+                text-shadow: 0 0 8px rgba(0, 243, 255, 0.5);
+                direction: auto; /* Supports Arabic RTL */
+            }
+            .input-box { margin-top: 20px; width: 90%; display: flex; gap: 10px; }
+            input[type="text"] {
+                flex: 1; background: rgba(0, 0, 0, 0.6); border: 1px solid var(--cyan);
+                border-radius: 6px; padding: 15px; color: #fff; font-size: 16px; font-family: 'Cairo', sans-serif;
+            }
+            .action-btn { background: rgba(0, 243, 255, 0.2); border: 1px solid var(--cyan); color: var(--cyan); padding: 0 25px; font-family: 'Orbitron'; font-weight: bold; cursor: pointer; border-radius: 6px; transition: 0.3s;}
+            .action-btn:hover { background: var(--cyan); color: #000; }
+            .log-terminal { font-family: monospace; font-size: 13px; color: #6a9fb5; overflow-y: auto; flex: 1; line-height: 1.7; }
+            
+            /* Modal */
+            .modal-overlay { display: none; position: fixed; top:0; left:0; width:100vw; height:100vh; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
+            .modal-content { background: #020610; border: 2px solid var(--cyan); box-shadow: 0 0 50px var(--cyan-glow); padding: 30px; width: 400px; border-radius: 12px; }
+            
+            @keyframes spin { 100% { transform: rotate(360deg); } }
+            @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
         </style>
     </head>
     <body>
         <header>
-            <div class="logo">⚡ JINNY // JARVIS CORE</div>
+            <div class="logo">⚡ JINNY // OS</div>
             <div class="header-controls">
-                <div class="status-pill" id="sys-status">● SYSTEM STANDBY</div>
-                <button class="settings-btn" onclick="openModal()">⚙️ AI SETTINGS</button>
+                <button class="mic-lang-btn" id="lang-btn" onclick="toggleLang()">MIC: ARABIC</button>
+                <button class="mic-lang-btn" onclick="openModal()">⚙️ AI SETUP</button>
             </div>
         </header>
 
         <main>
+            <!-- Left: IoT -->
             <div class="hud-card">
-                <div class="card-title">SMART HARDWARE SWITCHES</div>
+                <div class="card-title">HARDWARE LINK</div>
                 <div class="device-row">
-                    <div><div class="device-name">Living Room Light</div><small style="color:#6e859d">HomeAssistant Bridge</small></div>
-                    <button class="toggle-btn off" id="btn-light" onclick="toggleDevice('living_room_light')">OFF</button>
+                    <div><div style="font-weight:bold">Living Room Light</div><small style="color:#6e859d">Main Relay</small></div>
+                    <button class="toggle-btn off" id="btn-light" onclick="toggleDevice('living_room_light', this)">OFF</button>
                 </div>
                 <div class="device-row">
-                    <div><div class="device-name">Climate AC Unit</div><small style="color:#6e859d" id="temp-display">22°C</small></div>
-                    <div class="climate-ctrl">
-                        <button class="ctrl-btn" onclick="adjustTemp(-1)">-</button>
-                        <button class="ctrl-btn" onclick="adjustTemp(+1)">+</button>
+                    <div><div style="font-weight:bold">Smart Lock</div><small style="color:#6e859d">Front Door</small></div>
+                    <button class="toggle-btn on" id="btn-lock" onclick="toggleLock(this)">LOCKED</button>
+                </div>
+                <div class="device-row">
+                    <div><div style="font-weight:bold">Workstation PC</div><small style="color:#6e859d">Wake-on-LAN</small></div>
+                    <button class="toggle-btn off" onclick="executeDevice('workstation_pc', 'wake', this)">WAKE</button>
+                </div>
+            </div>
+
+            <!-- Center: Hologram -->
+            <div class="center-stage">
+                <div class="reactor-container" id="reactor" onclick="startMic()">
+                    <div class="ring ring-1"></div>
+                    <div class="ring ring-2"></div>
+                    <div class="ring ring-3"></div>
+                    <div class="core-btn" id="core-text">INITIATE<br>VOICE</div>
+                </div>
+
+                <div class="text-container">
+                    <div class="speech-readout" id="readout">
+                        "Systems online, sir. Waiting for your command."
                     </div>
                 </div>
-                <div class="device-row">
-                    <div><div class="device-name">Smart Lock</div><small style="color:#6e859d">MQTT Realtime</small></div>
-                    <button class="toggle-btn on" id="btn-lock" onclick="toggleLock()">LOCKED</button>
-                </div>
-                <div class="device-row">
-                    <div><div class="device-name">Workstation PC</div><small style="color:#6e859d">Wake-on-LAN</small></div>
-                    <button class="toggle-btn off" onclick="wakePc()">WAKE PC</button>
-                </div>
-            </div>
 
-            <div class="center-stage">
-                <div class="arc-reactor" id="reactor-orb" onclick="toggleVoiceListening()">
-                    <div class="arc-inner-ring"></div>
-                    <div class="arc-core-text" id="core-state">CLICK TO<br>SPEAK</div>
-                </div>
-                <canvas id="wave-canvas"></canvas>
-                <div class="speech-readout" id="readout">
-                    "All systems optimal, sir. Configure your Gemini API key and Model, or speak your command."
-                </div>
                 <div class="input-box">
-                    <input type="text" id="cmd-input" placeholder="Speak via Arc Reactor or type your order..." onkeypress="if(event.key==='Enter') sendCommand()">
-                    <button class="action-btn" onclick="sendCommand()">EXECUTE</button>
+                    <input type="text" id="cmd-input" placeholder="Type command here..." onkeypress="if(event.key==='Enter') sendCommand()">
+                    <button class="action-btn" onclick="sendCommand()">SEND</button>
                 </div>
             </div>
 
+            <!-- Right: Logs -->
             <div class="hud-card">
-                <div class="card-title">DIAGNOSTIC LOG FEED</div>
+                <div class="card-title">SYSTEM LOGS</div>
                 <div class="log-terminal" id="term-logs">
-                    [SYSTEM BOOT] Jinny Core Operating System Online.<br>
-                    [MEMORY] Vector SQLite Semantic Store active.<br>
-                    [VOICE] Edge Neural TTS ready.<br>
-                    [AWAITING] Standing by for instructions...
+                    [BOOT] Holographic UI Initialized.<br>
+                    [VOICE] English/Arabic dynamic TTS ready.<br>
                 </div>
             </div>
         </main>
 
-        <!-- Settings Modal for Gemini Key & Model -->
+        <!-- Settings Modal -->
         <div class="modal-overlay" id="settings-modal">
             <div class="modal-content">
-                <h3 style="font-family:'Orbitron',sans-serif; color:var(--cyan); margin-bottom:15px;">CONFIGURE GEMINI AI</h3>
-                
-                <label class="input-label">GEMINI API KEY</label>
-                <input type="text" id="key-input" placeholder="AIzaSy..." style="width:100%; margin-bottom:15px;">
-                
-                <label class="input-label">AI MODEL NAME</label>
-                <input type="text" id="model-input" value="gemini-1.5-pro-latest" placeholder="e.g., gemini-1.5-pro-latest" style="width:100%; margin-bottom:25px;">
-                
+                <h3 style="color:var(--cyan); font-family:'Orbitron'; margin-bottom:20px;">SYSTEM CONFIG</h3>
+                <input type="text" id="key-input" placeholder="Gemini API Key..." style="width:100%; margin-bottom:15px;">
+                <input type="text" id="model-input" value="gemini-3.5-flash-lite" placeholder="Model Name" style="width:100%; margin-bottom:25px;">
                 <div style="display:flex; justify-content:flex-end; gap:10px;">
-                    <button class="action-btn" style="background:#223344;" onclick="closeModal()">CANCEL</button>
-                    <button class="action-btn" onclick="saveApiKey()">ACTIVATE AI</button>
+                    <button class="action-btn" style="background:transparent;" onclick="closeModal()">CLOSE</button>
+                    <button class="action-btn" onclick="saveApiKey()">SAVE</button>
                 </div>
             </div>
         </div>
@@ -432,16 +340,12 @@ async def jarvis_holographic_dashboard():
 
         <script>
             const API_KEY = "jinny_live_sec_prod_9948201847192847";
+            let micLang = 'ar-EG'; // Default to Arabic as requested
             const readout = document.getElementById("readout");
-            const coreText = document.getElementById("core-state");
-            const orb = document.getElementById("reactor-orb");
             const logs = document.getElementById("term-logs");
             const player = document.getElementById("tts-player");
-            const canvas = document.getElementById("wave-canvas");
-            const ctx = canvas.getContext("2d");
-
-            let currentDevices = {};
-            let isSpeaking = false;
+            const reactor = document.getElementById("reactor");
+            const coreText = document.getElementById("core-text");
 
             function log(msg) {
                 const now = new Date().toLocaleTimeString();
@@ -449,26 +353,16 @@ async def jarvis_holographic_dashboard():
                 logs.scrollTop = logs.scrollHeight;
             }
 
-            function drawWave() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.beginPath();
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = isSpeaking ? "#ff3366" : "#00f0ff";
-                const mid = canvas.height / 2;
-                for (let x = 0; x < canvas.width; x++) {
-                    const amp = isSpeaking ? 16 : 4;
-                    const y = mid + Math.sin(x * 0.08 + Date.now() * 0.005) * amp;
-                    if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-                }
-                ctx.stroke();
-                requestAnimationFrame(drawWave);
+            function toggleLang() {
+                const btn = document.getElementById("lang-btn");
+                if(micLang === 'ar-EG') { micLang = 'en-US'; btn.innerText = "MIC: ENGLISH"; }
+                else { micLang = 'ar-EG'; btn.innerText = "MIC: ARABIC"; }
+                log(`Microphone language switched to ${micLang}`);
             }
-            drawWave();
 
             async function speakOut(text) {
-                isSpeaking = true;
                 try {
-                    log("Synthesizing neural voice...");
+                    log("Synthesizing voice...");
                     const res = await fetch("/api/voice/synthesize", {
                         method: "POST",
                         headers: { "Content-Type": "application/json", "X-Jinny-Api-Key": API_KEY },
@@ -477,24 +371,16 @@ async def jarvis_holographic_dashboard():
                     if (res.ok) {
                         const blob = await res.blob();
                         player.src = URL.createObjectURL(blob);
-                        player.onended = () => { isSpeaking = false; };
                         player.play();
-                    } else {
-                        const utter = new SpeechSynthesisUtterance(text);
-                        utter.pitch = 0.9;
-                        utter.onend = () => { isSpeaking = false; };
-                        window.speechSynthesis.speak(utter);
                     }
-                } catch(e) {
-                    isSpeaking = false;
-                }
+                } catch(e) { log("Voice Error: " + e.message); }
             }
 
             async function processQuery(queryText) {
                 if(!queryText.trim()) return;
                 readout.innerText = `Processing: "${queryText}"...`;
-                log(`USER: "${queryText}"`);
-
+                log(`USER: ${queryText}`);
+                
                 try {
                     const res = await fetch("/api/assistant/interact", {
                         method: "POST",
@@ -502,13 +388,13 @@ async def jarvis_holographic_dashboard():
                         body: JSON.stringify({ query: queryText })
                     });
                     const data = await res.json();
-                    const reply = data.speech_output || "Command complete, sir.";
-                    readout.innerText = `"${reply}"`;
+                    const reply = data.speech_output || "Done.";
+                    readout.innerText = reply;
                     log(`JINNY: ${reply}`);
                     speakOut(reply);
                     fetchDevices();
                 } catch(e) {
-                    readout.innerText = "Execution failed.";
+                    readout.innerText = "Connection failed.";
                     log(`ERROR: ${e.message}`);
                 }
             }
@@ -519,120 +405,90 @@ async def jarvis_holographic_dashboard():
                 input.value = "";
             }
 
+            // Voice Recognition
             let recognition;
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
                 recognition = new SpeechRec();
                 recognition.continuous = false;
-                recognition.lang = 'en-US';
+            }
 
+            function startMic() {
+                if (!recognition) return alert("Mic not supported in this browser.");
+                // Note: Chrome requires HTTPS or localhost for microphone access
+                if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'https:') {
+                    alert("Microphone requires localhost or HTTPS. Please type your command instead.");
+                    return;
+                }
+                recognition.lang = micLang;
                 recognition.onstart = () => {
-                    orb.classList.add("active");
-                    coreText.innerHTML = "LISTENING...";
-                    log("Voice channel active. Speak your command.");
+                    reactor.classList.add("listening");
+                    coreText.innerHTML = "LISTENING";
                 };
-                recognition.onresult = (e) => {
-                    processQuery(e.results[0][0].transcript);
-                };
+                recognition.onresult = (e) => { processQuery(e.results[0][0].transcript); };
                 recognition.onend = () => {
-                    orb.classList.remove("active");
-                    coreText.innerHTML = "CLICK TO<br>SPEAK";
+                    reactor.classList.remove("listening");
+                    coreText.innerHTML = "INITIATE<br>VOICE";
                 };
+                try { recognition.start(); } catch(e) { log("Mic error: " + e.message); }
             }
 
-            function toggleVoiceListening() {
-                if (recognition) recognition.start();
-                else alert("Microphone supported in Google Chrome.");
-            }
-
-            async function executeDevice(id, action, params = {}) {
-                log(`IoT DISPATCH -> ${id} [${action}]`);
+            async function executeDevice(id, action, btnElement = null) {
+                if(btnElement) { btnElement.disabled = true; btnElement.innerText = "..."; }
                 try {
                     await fetch("/api/iot/execute", {
                         method: "POST",
                         headers: { "Content-Type": "application/json", "X-Jinny-Api-Key": API_KEY },
-                        body: JSON.stringify({ device_id: id, action: action, params: params })
+                        body: JSON.stringify({ device_id: id, action: action })
                     });
                     fetchDevices();
                 } catch(e) { log(`IoT Error: ${e.message}`); }
+                if(btnElement) btnElement.disabled = false;
             }
 
-            function toggleDevice(id) {
-                const current = currentDevices[id]?.state || "off";
-                const next = current === "on" ? "off" : "on";
-                executeDevice(id, next);
+            let currentDevices = {};
+            function toggleDevice(id, btn) {
+                const action = currentDevices[id]?.state === "on" ? "off" : "on";
+                executeDevice(id, action, btn);
             }
-
-            function toggleLock() {
-                const current = currentDevices["smart_lock"]?.state || "locked";
-                const next = current === "locked" ? "unlocked" : "locked";
-                executeDevice("smart_lock", next);
-            }
-
-            function adjustTemp(delta) {
-                let current = currentDevices["ac_unit"]?.temperature || 22;
-                current += delta;
-                executeDevice("ac_unit", "on", { temperature: current });
-            }
-
-            function wakePc() {
-                executeDevice("workstation_pc", "wake");
-                speakOut("Broadcasting Wake-on-LAN packet to workstation, sir.");
+            function toggleLock(btn) {
+                const action = currentDevices["smart_lock"]?.state === "locked" ? "unlocked" : "locked";
+                executeDevice("smart_lock", action, btn);
             }
 
             async function fetchDevices() {
                 try {
-                    const res = await fetch("/api/iot/devices", {
-                        headers: { "X-Jinny-Api-Key": API_KEY }
-                    });
+                    const res = await fetch("/api/iot/devices", { headers: { "X-Jinny-Api-Key": API_KEY } });
                     currentDevices = await res.json();
                     
                     const light = document.getElementById("btn-light");
-                    if (currentDevices.living_room_light?.state === "on") {
-                        light.className = "toggle-btn on"; light.innerText = "ON";
-                    } else {
-                        light.className = "toggle-btn off"; light.innerText = "OFF";
-                    }
+                    if (currentDevices.living_room_light?.state === "on") { light.className = "toggle-btn on"; light.innerText = "ON"; } 
+                    else { light.className = "toggle-btn off"; light.innerText = "OFF"; }
 
                     const lock = document.getElementById("btn-lock");
-                    if (currentDevices.smart_lock?.state === "unlocked") {
-                        lock.className = "toggle-btn off"; lock.innerText = "UNLOCKED";
-                    } else {
-                        lock.className = "toggle-btn on"; lock.innerText = "LOCKED";
-                    }
-
-                    document.getElementById("temp-display").innerText = `${currentDevices.ac_unit?.temperature || 22}°C`;
+                    if (currentDevices.smart_lock?.state === "unlocked") { lock.className = "toggle-btn off"; lock.innerText = "UNLOCKED"; } 
+                    else { lock.className = "toggle-btn on"; lock.innerText = "LOCKED"; }
                 } catch(e) {}
             }
-            setInterval(fetchDevices, 4000);
-            fetchDevices();
+            setInterval(fetchDevices, 3000); fetchDevices();
 
             function openModal() { document.getElementById("settings-modal").style.display = "flex"; }
             function closeModal() { document.getElementById("settings-modal").style.display = "none"; }
-
+            
             async function saveApiKey() {
                 const key = document.getElementById("key-input").value.trim();
                 const model = document.getElementById("model-input").value.trim();
-                if (!key || !model) return alert("Please enter both API Key and Model Name.");
+                if (!key || !model) return alert("Required fields missing.");
                 try {
-                    const res = await fetch("/api/settings/gemini-key", {
+                    await fetch("/api/settings/gemini-key", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ gemini_api_key: key, gemini_model: model })
                     });
-                    const data = await res.json();
-                    if(res.ok) {
-                        log(`AI Core activated with model: ${model}`);
-                        document.getElementById("sys-status").innerText = "● AI CORE ONLINE";
-                        document.getElementById("sys-status").style.color = "#00ff88";
-                        closeModal();
-                        speakOut("AI Core online, sir. All neural inference systems are operational.");
-                    } else {
-                        alert("Error: " + data.detail);
-                    }
-                } catch(e) {
-                    alert("Error activating API key: " + e.message);
-                }
+                    log(`AI Core online with model: ${model}`);
+                    closeModal();
+                    speakOut("Systems updated. I am ready, sir.");
+                } catch(e) { alert("Error: " + e.message); }
             }
         </script>
     </body>
@@ -640,42 +496,20 @@ async def jarvis_holographic_dashboard():
     """
     return HTMLResponse(content=html_content)
 
-
-# ----------------- Core API Endpoints -----------------
 @app.get("/api/health")
-async def health_check():
-    return {
-        "status": "healthy",
-        "system": "Jinny Core",
-        "version": settings.VERSION,
-        "author": "Eng. Yousuf Albaz (AI & Systems Engineer)"
-    }
-
+async def health_check(): return {"status": "healthy"}
 
 @app.post("/api/assistant/interact", dependencies=[Depends(verify_api_key)])
 async def interact_with_assistant(req: QueryRequest):
-    try:
-        response = await assistant_core.process_user_intent(req.query, req.metadata)
-        return response
-    except Exception as e:
-        logger.error(f"Inference gateway error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
+    return await assistant_core.process_user_intent(req.query, req.metadata)
 
 @app.post("/api/voice/synthesize", dependencies=[Depends(verify_api_key)])
 async def synthesize_voice(req: VoiceSynthesizeRequest):
-    try:
-        audio_bytes = await voice_engine.synthesize_speech(req.text, req.voice)
-        return Response(content=audio_bytes, media_type="audio/mpeg")
-    except Exception as e:
-        logger.error(f"Voice synthesis error: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
+    audio_bytes = await voice_engine.synthesize_speech(req.text, req.voice)
+    return Response(content=audio_bytes, media_type="audio/mpeg")
 
 @app.get("/api/iot/devices", dependencies=[Depends(verify_api_key)])
-async def list_iot_devices():
-    return iot_controller.list_devices()
-
+async def list_iot_devices(): return iot_controller.list_devices()
 
 @app.post("/api/iot/execute", dependencies=[Depends(verify_api_key)])
 async def execute_iot_command(req: IoTCommandRequest):
