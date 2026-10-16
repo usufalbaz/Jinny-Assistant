@@ -1,10 +1,11 @@
 """
-Jinny Core - Production FastAPI Server & Jarvis Web HUD Entry Point
+Jinny Core - Production FastAPI Server & Stark Industries Interactive HUD
 Architected & Engineered by Eng. Yousuf Albaz (AI & Systems Engineer)
 """
 
 import logging
-import asyncio
+import os
+import json
 from contextlib import asynccontextmanager
 from typing import Dict, Any, Optional, List
 
@@ -12,7 +13,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depe
 from fastapi.responses import Response, HTMLResponse
 from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from google import genai
 
 from config import settings
 from core.memory import PersistentMemoryStore
@@ -93,29 +95,57 @@ class IoTCommandRequest(BaseModel):
     params: Optional[Dict[str, Any]] = None
 
 
-# ----------------- The Holographic Jarvis Web HUD (Front-End) -----------------
+class ApiKeyUpdateRequest(BaseModel):
+    gemini_api_key: str
+
+
+# ----------------- Dynamic Settings Endpoint -----------------
+@app.post("/api/settings/gemini-key")
+async def update_gemini_api_key(req: ApiKeyUpdateRequest):
+    """Dynamically set and activate Gemini API Key from the web dashboard."""
+    key = req.gemini_api_key.strip()
+    if not key:
+        raise HTTPException(status_code=400, detail="API key cannot be empty.")
+
+    settings.GEMINI_API_KEY = key
+    assistant_core.client = genai.Client(api_key=key)
+    memory_store.client = genai.Client(api_key=key)
+
+    # Persist key to .env file
+    try:
+        env_path = os.path.join(os.path.dirname(__file__), ".env")
+        with open(env_path, "w") as f:
+            f.write(f"GEMINI_API_KEY={key}\n")
+    except Exception as e:
+        logger.warning(f"Could not write .env file: {e}")
+
+    logger.info("Gemini API Key dynamically configured and activated.")
+    return {"status": "success", "message": "Gemini AI Core online and fully activated!"}
+
+
+# ----------------- The Holographic Jarvis Web HUD -----------------
 @app.get("/", response_class=HTMLResponse)
 async def jarvis_holographic_dashboard():
-    """Returns the Stark Industries Holographic HUD Interface directly in browser."""
     html_content = """
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>JINNY CORE // STARK OS</title>
+        <title>JINNY // JARVIS CORE</title>
         <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
         <style>
             :root {
                 --cyan: #00f0ff;
-                --cyan-glow: rgba(0, 240, 255, 0.4);
+                --cyan-glow: rgba(0, 240, 255, 0.45);
                 --dark: #040814;
-                --panel: rgba(8, 18, 38, 0.75);
+                --panel: rgba(8, 18, 38, 0.85);
                 --red: #ff3366;
+                --green: #00ff88;
             }
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body {
-                background: radial-gradient(circle at center, #0a1428 0%, #030611 100%);
+                background: radial-gradient(circle at center, #0d1a33 0%, #030611 100%);
                 color: #e2f1ff;
                 font-family: 'Rajdhani', sans-serif;
                 height: 100vh;
@@ -124,12 +154,12 @@ async def jarvis_holographic_dashboard():
                 flex-direction: column;
             }
             header {
-                padding: 18px 40px;
+                padding: 16px 36px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                border-bottom: 1px solid rgba(0, 240, 255, 0.15);
-                background: rgba(4, 8, 20, 0.8);
+                border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+                background: rgba(4, 8, 20, 0.9);
             }
             .logo {
                 font-family: 'Orbitron', sans-serif;
@@ -139,31 +169,43 @@ async def jarvis_holographic_dashboard():
                 color: var(--cyan);
                 text-shadow: 0 0 15px var(--cyan-glow);
             }
+            .header-controls { display: flex; gap: 14px; align-items: center; }
             .status-pill {
-                font-size: 13px;
+                font-size: 12px;
                 letter-spacing: 2px;
-                padding: 6px 16px;
+                padding: 6px 14px;
                 border: 1px solid var(--cyan);
                 border-radius: 20px;
                 color: var(--cyan);
                 box-shadow: 0 0 10px var(--cyan-glow);
-                animation: pulse 2s infinite;
             }
+            .settings-btn {
+                background: rgba(0, 240, 255, 0.1);
+                border: 1px solid var(--cyan);
+                color: var(--cyan);
+                padding: 6px 12px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-family: 'Orbitron', sans-serif;
+                font-size: 13px;
+                transition: all 0.2s;
+            }
+            .settings-btn:hover { background: var(--cyan); color: #000; }
             main {
                 flex: 1;
                 display: grid;
-                grid-template-columns: 320px 1fr 340px;
-                gap: 24px;
-                padding: 24px;
-                height: calc(100vh - 80px);
+                grid-template-columns: 340px 1fr 340px;
+                gap: 20px;
+                padding: 20px;
+                height: calc(100vh - 75px);
             }
             .hud-card {
                 background: var(--panel);
-                border: 1px solid rgba(0, 240, 255, 0.2);
+                border: 1px solid rgba(0, 240, 255, 0.25);
                 border-radius: 12px;
                 padding: 20px;
-                backdrop-filter: blur(10px);
-                box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+                backdrop-filter: blur(12px);
+                box-shadow: 0 8px 32px rgba(0,0,0,0.6);
                 display: flex;
                 flex-direction: column;
             }
@@ -173,10 +215,35 @@ async def jarvis_holographic_dashboard():
                 letter-spacing: 2px;
                 color: var(--cyan);
                 margin-bottom: 16px;
-                border-bottom: 1px dashed rgba(0, 240, 255, 0.2);
+                border-bottom: 1px dashed rgba(0, 240, 255, 0.25);
                 padding-bottom: 8px;
             }
-            /* Arc Reactor Core Center */
+            /* Interactive Device Cards */
+            .device-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px;
+                margin-bottom: 10px;
+                background: rgba(0, 240, 255, 0.04);
+                border: 1px solid rgba(0, 240, 255, 0.12);
+                border-radius: 8px;
+            }
+            .device-name { font-weight: 700; font-size: 15px; }
+            .toggle-btn {
+                padding: 5px 14px;
+                font-family: 'Orbitron', sans-serif;
+                font-size: 11px;
+                border-radius: 6px;
+                cursor: pointer;
+                border: 1px solid;
+                transition: all 0.2s;
+            }
+            .toggle-btn.on { background: var(--cyan); color: #000; border-color: var(--cyan); box-shadow: 0 0 10px var(--cyan-glow); }
+            .toggle-btn.off { background: transparent; color: #8899aa; border-color: #445566; }
+            .climate-ctrl { display: flex; gap: 8px; align-items: center; }
+            .ctrl-btn { background: rgba(0,240,255,0.15); border: 1px solid var(--cyan); color: #fff; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+            /* Arc Reactor Center */
             .center-stage {
                 display: flex;
                 flex-direction: column;
@@ -185,155 +252,178 @@ async def jarvis_holographic_dashboard():
                 position: relative;
             }
             .arc-reactor {
-                width: 220px;
-                height: 220px;
+                width: 230px;
+                height: 230px;
                 border-radius: 50%;
-                border: 2px solid var(--cyan);
-                box-shadow: 0 0 40px var(--cyan-glow), inset 0 0 30px var(--cyan-glow);
+                border: 3px solid var(--cyan);
+                box-shadow: 0 0 50px var(--cyan-glow), inset 0 0 35px var(--cyan-glow);
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 position: relative;
                 cursor: pointer;
-                transition: transform 0.3s;
+                transition: all 0.3s;
             }
-            .arc-reactor:hover { transform: scale(1.05); }
-            .arc-reactor.active {
-                border-color: var(--red);
-                box-shadow: 0 0 60px rgba(255, 51, 102, 0.6);
-            }
+            .arc-reactor:hover { transform: scale(1.04); }
+            .arc-reactor.active { border-color: var(--red); box-shadow: 0 0 70px rgba(255, 51, 102, 0.7); }
             .arc-inner-ring {
-                width: 170px;
-                height: 170px;
+                width: 180px;
+                height: 180px;
                 border-radius: 50%;
-                border: 2px dashed rgba(0, 240, 255, 0.6);
-                animation: rotate 15s linear infinite;
+                border: 2px dashed rgba(0, 240, 255, 0.7);
+                animation: rotate 12s linear infinite;
             }
             .arc-core-text {
                 position: absolute;
                 font-family: 'Orbitron', sans-serif;
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: 700;
                 color: #fff;
                 letter-spacing: 2px;
                 text-align: center;
             }
+            #wave-canvas { width: 300px; height: 60px; margin-top: 20px; }
             .speech-readout {
-                margin-top: 30px;
-                width: 80%;
-                max-width: 600px;
+                margin-top: 15px;
+                width: 85%;
+                max-width: 650px;
                 text-align: center;
-                font-size: 18px;
-                color: #b8e2ff;
-                min-height: 60px;
-                line-height: 1.6;
-                text-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+                font-size: 19px;
+                color: #cce7ff;
+                min-height: 55px;
+                line-height: 1.5;
+                text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
             }
-            /* Command input */
-            .input-box {
-                margin-top: 20px;
-                width: 70%;
-                display: flex;
-                gap: 12px;
-            }
+            .input-box { margin-top: 20px; width: 80%; display: flex; gap: 12px; }
             input[type="text"] {
                 flex: 1;
-                background: rgba(0, 0, 0, 0.4);
+                background: rgba(0, 0, 0, 0.5);
                 border: 1px solid rgba(0, 240, 255, 0.3);
                 border-radius: 8px;
-                padding: 12px 16px;
+                padding: 12px 18px;
                 color: #fff;
                 font-family: 'Rajdhani', sans-serif;
                 font-size: 16px;
                 outline: none;
             }
-            input[type="text"]:focus { border-color: var(--cyan); box-shadow: 0 0 10px var(--cyan-glow); }
-            button.action-btn {
-                background: rgba(0, 240, 255, 0.15);
+            input[type="text"]:focus { border-color: var(--cyan); box-shadow: 0 0 12px var(--cyan-glow); }
+            .action-btn {
+                background: rgba(0, 240, 255, 0.18);
                 border: 1px solid var(--cyan);
                 color: var(--cyan);
                 font-family: 'Orbitron', sans-serif;
                 font-size: 12px;
                 letter-spacing: 1px;
-                padding: 0 20px;
+                padding: 0 24px;
                 border-radius: 8px;
                 cursor: pointer;
-                transition: all 0.2s;
             }
-            button.action-btn:hover { background: var(--cyan); color: #000; }
-            /* Device List */
-            .device-item {
-                display: flex;
-                justify-content: space-between;
+            .action-btn:hover { background: var(--cyan); color: #000; }
+            .log-terminal { font-family: monospace; font-size: 12px; color: #79a8d0; overflow-y: auto; flex: 1; line-height: 1.6; }
+            /* Modal */
+            .modal-overlay {
+                display: none;
+                position: fixed;
+                top: 0; left: 0; width: 100vw; height: 100vh;
+                background: rgba(0,0,0,0.85);
+                backdrop-filter: blur(8px);
+                justify-content: center;
                 align-items: center;
-                padding: 10px 0;
-                border-bottom: 1px solid rgba(255,255,255,0.05);
+                z-index: 1000;
             }
-            .device-badge {
-                font-size: 11px;
-                padding: 3px 8px;
-                border-radius: 4px;
-                background: rgba(0, 240, 255, 0.1);
-                color: var(--cyan);
-            }
-            .log-terminal {
-                font-family: monospace;
-                font-size: 12px;
-                color: #79a8d0;
-                overflow-y: auto;
-                flex: 1;
-                line-height: 1.5;
+            .modal-content {
+                background: #081226;
+                border: 2px solid var(--cyan);
+                box-shadow: 0 0 40px var(--cyan-glow);
+                border-radius: 12px;
+                padding: 30px;
+                width: 90%;
+                max-width: 480px;
             }
             @keyframes rotate { 100% { transform: rotate(360deg); } }
-            @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         </style>
     </head>
     <body>
         <header>
             <div class="logo">⚡ JINNY // JARVIS CORE</div>
-            <div class="status-pill" id="sys-status">● AUTONOMOUS ONLINE</div>
+            <div class="header-controls">
+                <div class="status-pill" id="sys-status">● SYSTEM STANDBY</div>
+                <button class="settings-btn" onclick="openModal()">⚙️ AI KEY</button>
+            </div>
         </header>
 
         <main>
-            <!-- Left: Smart Home & IoT Telemetry -->
+            <!-- Left: Interactive IoT Hardware Controls -->
             <div class="hud-card">
-                <div class="card-title">HARDWARE NODES (IoT)</div>
-                <div id="device-list">
-                    <div class="device-item"><span>Living Room Light</span><span class="device-badge" id="dev-light">OFF</span></div>
-                    <div class="device-item"><span>AC Climate Unit</span><span class="device-badge" id="dev-ac">22°C</span></div>
-                    <div class="device-item"><span>Smart Lock</span><span class="device-badge" id="dev-lock">LOCKED</span></div>
-                    <div class="device-item"><span>Workstation PC</span><span class="device-badge" id="dev-pc">WOL READY</span></div>
+                <div class="card-title">SMART HARDWARE SWITCHES</div>
+
+                <div class="device-row">
+                    <div><div class="device-name">Living Room Light</div><small style="color:#6e859d">HomeAssistant Bridge</small></div>
+                    <button class="toggle-btn off" id="btn-light" onclick="toggleDevice('living_room_light')">OFF</button>
+                </div>
+
+                <div class="device-row">
+                    <div><div class="device-name">Climate AC Unit</div><small style="color:#6e859d" id="temp-display">22°C</small></div>
+                    <div class="climate-ctrl">
+                        <button class="ctrl-btn" onclick="adjustTemp(-1)">-</button>
+                        <button class="ctrl-btn" onclick="adjustTemp(+1)">+</button>
+                    </div>
+                </div>
+
+                <div class="device-row">
+                    <div><div class="device-name">Smart Lock</div><small style="color:#6e859d">MQTT Realtime</small></div>
+                    <button class="toggle-btn on" id="btn-lock" onclick="toggleLock()">LOCKED</button>
+                </div>
+
+                <div class="device-row">
+                    <div><div class="device-name">Workstation PC</div><small style="color:#6e859d">Wake-on-LAN</small></div>
+                    <button class="toggle-btn off" onclick="wakePc()">WAKE PC</button>
                 </div>
             </div>
 
-            <!-- Center: Interactive Arc Reactor & Voice Visualizer -->
+            <!-- Center: Arc Reactor & Voice Wave -->
             <div class="center-stage">
                 <div class="arc-reactor" id="reactor-orb" onclick="toggleVoiceListening()">
                     <div class="arc-inner-ring"></div>
                     <div class="arc-core-text" id="core-state">CLICK TO<br>SPEAK</div>
                 </div>
 
+                <canvas id="wave-canvas"></canvas>
+
                 <div class="speech-readout" id="readout">
-                    "All systems optimal, sir. Microphone and neural voice channels are ready."
+                    "All systems optimal, sir. Configure your Gemini API key or speak your command."
                 </div>
 
                 <div class="input-box">
-                    <input type="text" id="cmd-input" placeholder="Type an order or click the Arc Reactor to speak..." onkeypress="if(event.key==='Enter') sendCommand()">
-                    <button class="action-btn" onclick="sendCommand()">TRANSMIT</button>
+                    <input type="text" id="cmd-input" placeholder="Speak via Arc Reactor or type your order..." onkeypress="if(event.key==='Enter') sendCommand()">
+                    <button class="action-btn" onclick="sendCommand()">EXECUTE</button>
                 </div>
             </div>
 
-            <!-- Right: Neural Logs & Telemetry -->
+            <!-- Right: Neural Telemetry Logs -->
             <div class="hud-card">
-                <div class="card-title">DIAGNOSTIC TELEMETRY</div>
+                <div class="card-title">DIAGNOSTIC LOG FEED</div>
                 <div class="log-terminal" id="term-logs">
-                    [SYSTEM BOOT] Jinny Core v3.0 Online.<br>
-                    [MEMORY] Semantic vector SQLite linked.<br>
-                    [VOICE] Edge Neural TTS loaded.<br>
+                    [SYSTEM BOOT] Jinny Core Operating System Online.<br>
+                    [MEMORY] Vector SQLite Semantic Store active.<br>
+                    [VOICE] Edge Neural TTS ready.<br>
                     [AWAITING] Standing by for instructions...
                 </div>
             </div>
         </main>
+
+        <!-- Settings Modal for Gemini Key -->
+        <div class="modal-overlay" id="settings-modal">
+            <div class="modal-content">
+                <h3 style="font-family:'Orbitron',sans-serif; color:var(--cyan); margin-bottom:15px;">CONFIGURE GEMINI AI</h3>
+                <p style="font-size:14px; color:#88a0bc; margin-bottom:15px;">Paste your free Google Gemini API Key from Google AI Studio to unlock autonomous thinking and conversation.</p>
+                <input type="text" id="key-input" placeholder="AIzaSy..." style="width:100%; margin-bottom:20px;">
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button class="action-btn" style="background:#223344;" onclick="closeModal()">CANCEL</button>
+                    <button class="action-btn" onclick="saveApiKey()">ACTIVATE AI</button>
+                </div>
+            </div>
+        </div>
 
         <audio id="tts-player" autoplay></audio>
 
@@ -344,6 +434,11 @@ async def jarvis_holographic_dashboard():
             const orb = document.getElementById("reactor-orb");
             const logs = document.getElementById("term-logs");
             const player = document.getElementById("tts-player");
+            const canvas = document.getElementById("wave-canvas");
+            const ctx = canvas.getContext("2d");
+
+            let currentDevices = {};
+            let isSpeaking = false;
 
             function log(msg) {
                 const now = new Date().toLocaleTimeString();
@@ -351,10 +446,28 @@ async def jarvis_holographic_dashboard():
                 logs.scrollTop = logs.scrollHeight;
             }
 
-            // Speak response aloud using Jinny's Neural TTS Endpoint
+            // Waveform animation
+            function drawWave() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = isSpeaking ? "#ff3366" : "#00f0ff";
+                const mid = canvas.height / 2;
+                for (let x = 0; x < canvas.width; x++) {
+                    const amp = isSpeaking ? 16 : 4;
+                    const y = mid + Math.sin(x * 0.08 + Date.now() * 0.005) * amp;
+                    if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                requestAnimationFrame(drawWave);
+            }
+            drawWave();
+
+            // Speak response via Neural TTS
             async function speakOut(text) {
+                isSpeaking = true;
                 try {
-                    log("Synthesizing neural voice output...");
+                    log("Synthesizing neural voice...");
                     const res = await fetch("/api/voice/synthesize", {
                         method: "POST",
                         headers: { "Content-Type": "application/json", "X-Jinny-Api-Key": API_KEY },
@@ -363,23 +476,24 @@ async def jarvis_holographic_dashboard():
                     if (res.ok) {
                         const blob = await res.blob();
                         player.src = URL.createObjectURL(blob);
+                        player.onended = () => { isSpeaking = false; };
                         player.play();
                     } else {
-                        // Fallback to browser built-in speech
                         const utter = new SpeechSynthesisUtterance(text);
                         utter.pitch = 0.9;
+                        utter.onend = () => { isSpeaking = false; };
                         window.speechSynthesis.speak(utter);
                     }
                 } catch(e) {
-                    console.error("Audio playback error:", e);
+                    isSpeaking = false;
                 }
             }
 
-            // Transmit User Order to AI Agent Brain
+            // Transmit query to Assistant
             async function processQuery(queryText) {
                 if(!queryText.trim()) return;
                 readout.innerText = `Processing: "${queryText}"...`;
-                log(`QUERY: "${queryText}"`);
+                log(`USER: "${queryText}"`);
 
                 try {
                     const res = await fetch("/api/assistant/interact", {
@@ -388,13 +502,13 @@ async def jarvis_holographic_dashboard():
                         body: JSON.stringify({ query: queryText })
                     });
                     const data = await res.json();
-                    const reply = data.speech_output || "Command processed, sir.";
+                    const reply = data.speech_output || "Command complete, sir.";
                     readout.innerText = `"${reply}"`;
                     log(`JINNY: ${reply}`);
                     speakOut(reply);
-                    updateDevices();
+                    fetchDevices();
                 } catch(e) {
-                    readout.innerText = "Connection anomaly encountered.";
+                    readout.innerText = "Execution failed.";
                     log(`ERROR: ${e.message}`);
                 }
             }
@@ -405,7 +519,7 @@ async def jarvis_holographic_dashboard():
                 input.value = "";
             }
 
-            // Voice Recognition from Laptop Microphone
+            // Voice recognition
             let recognition;
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -416,11 +530,10 @@ async def jarvis_holographic_dashboard():
                 recognition.onstart = () => {
                     orb.classList.add("active");
                     coreText.innerHTML = "LISTENING...";
-                    log("Microphone engaged. Speak your command.");
+                    log("Voice channel active. Speak your command.");
                 };
-                recognition.onresult = (event) => {
-                    const transcript = event.results[0][0].transcript;
-                    processQuery(transcript);
+                recognition.onresult = (e) => {
+                    processQuery(e.results[0][0].transcript);
                 };
                 recognition.onend = () => {
                     orb.classList.remove("active");
@@ -429,25 +542,97 @@ async def jarvis_holographic_dashboard():
             }
 
             function toggleVoiceListening() {
-                if (recognition) {
-                    recognition.start();
-                } else {
-                    alert("Speech recognition is not supported in this browser. Please use Chrome.");
-                }
+                if (recognition) recognition.start();
+                else alert("Microphone supported in Google Chrome.");
             }
 
-            async function updateDevices() {
+            // Interactive IoT Actions
+            async function executeDevice(id, action, params = {}) {
+                log(`IoT DISPATCH -> ${id} [${action}]`);
+                try {
+                    await fetch("/api/iot/execute", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "X-Jinny-Api-Key": API_KEY },
+                        body: JSON.stringify({ device_id: id, action: action, params: params })
+                    });
+                    fetchDevices();
+                } catch(e) { log(`IoT Error: ${e.message}`); }
+            }
+
+            function toggleDevice(id) {
+                const current = currentDevices[id]?.state || "off";
+                const next = current === "on" ? "off" : "on";
+                executeDevice(id, next);
+            }
+
+            function toggleLock() {
+                const current = currentDevices["smart_lock"]?.state || "locked";
+                const next = current === "locked" ? "unlocked" : "locked";
+                executeDevice("smart_lock", next);
+            }
+
+            function adjustTemp(delta) {
+                let current = currentDevices["ac_unit"]?.temperature || 22;
+                current += delta;
+                executeDevice("ac_unit", "on", { temperature: current });
+            }
+
+            function wakePc() {
+                executeDevice("workstation_pc", "wake");
+                speakOut("Broadcasting Wake-on-LAN packet to workstation, sir.");
+            }
+
+            async function fetchDevices() {
                 try {
                     const res = await fetch("/api/iot/devices", {
                         headers: { "X-Jinny-Api-Key": API_KEY }
                     });
-                    const devices = await res.json();
-                    if(devices.living_room_light) document.getElementById("dev-light").innerText = devices.living_room_light.state.toUpperCase();
-                    if(devices.ac_unit) document.getElementById("dev-ac").innerText = `${devices.ac_unit.temperature}°C`;
-                    if(devices.smart_lock) document.getElementById("dev-lock").innerText = devices.smart_lock.state.toUpperCase();
+                    currentDevices = await res.json();
+                    
+                    // Update UI state
+                    const light = document.getElementById("btn-light");
+                    if (currentDevices.living_room_light?.state === "on") {
+                        light.className = "toggle-btn on"; light.innerText = "ON";
+                    } else {
+                        light.className = "toggle-btn off"; light.innerText = "OFF";
+                    }
+
+                    const lock = document.getElementById("btn-lock");
+                    if (currentDevices.smart_lock?.state === "unlocked") {
+                        lock.className = "toggle-btn off"; lock.innerText = "UNLOCKED";
+                    } else {
+                        lock.className = "toggle-btn on"; lock.innerText = "LOCKED";
+                    }
+
+                    document.getElementById("temp-display").innerText = `${currentDevices.ac_unit?.temperature || 22}°C`;
                 } catch(e) {}
             }
-            setInterval(updateDevices, 5000);
+            setInterval(fetchDevices, 4000);
+            fetchDevices();
+
+            // Settings Modal
+            function openModal() { document.getElementById("settings-modal").style.display = "flex"; }
+            function closeModal() { document.getElementById("settings-modal").style.display = "none"; }
+
+            async function saveApiKey() {
+                const key = document.getElementById("key-input").value.trim();
+                if (!key) return alert("Please enter an API Key.");
+                try {
+                    const res = await fetch("/api/settings/gemini-key", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ gemini_api_key: key })
+                    });
+                    const data = await res.json();
+                    log("Gemini AI Core online and activated.");
+                    document.getElementById("sys-status").innerText = "● AI CORE ONLINE";
+                    document.getElementById("sys-status").style.color = "#00ff88";
+                    closeModal();
+                    speakOut("AI Core online, sir. All neural inference systems are operational.");
+                } catch(e) {
+                    alert("Error activating API key: " + e.message);
+                }
+            }
         </script>
     </body>
     </html>
@@ -455,7 +640,7 @@ async def jarvis_holographic_dashboard():
     return HTMLResponse(content=html_content)
 
 
-# ----------------- Existing API Endpoints -----------------
+# ----------------- Core API Endpoints -----------------
 @app.get("/api/health")
 async def health_check():
     return {
