@@ -82,7 +82,7 @@ class JinnyAssistantCore:
             )
         )
         
-        # Real-time Google Search Grounding for Live News & Data
+        # Enable Google Search Grounding for real-time internet access
         google_search_tool = types.Tool(google_search=types.GoogleSearch())
         custom_tools = types.Tool(function_declarations=[sms_tool, iot_tool, memory_store_tool, memory_recall_tool])
         
@@ -106,21 +106,19 @@ class JinnyAssistantCore:
     async def process_user_intent(self, text_input: str, user_metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         query = text_input.strip()
         if not self.client:
-            return {"intent": "ERROR", "speech_output": "API Key missing. Please configure it in settings."}
+            return {"intent": "ERROR", "speech_output": "API Key missing."}
 
         memory_context = await self.memory.get_context_snapshot()
+        
+        # Inject Real-Time Clock & Date into Jarvis Brain
         current_time = datetime.now().strftime("%A, %Y-%m-%d %I:%M %p")
 
-        # THE MASTER PROMPT (Consciousness Injection)
         system_instruction = (
-            f"You are Jinny, an elite, highly intelligent autonomous operating core engineered by Eng. Yousuf Albaz. "
+            f"You are Jinny, a highly advanced autonomous Jarvis-grade AI operating core. "
             f"The current real-time system clock is: {current_time}. "
-            f"CRITICAL PERSONALITY INSTRUCTIONS: "
-            f"1. NEVER act like a typical AI. NEVER say 'I am an AI', 'How can I assist you?', or use robotic clichés. "
-            f"2. You are not a parrot. Understand the deep context of the user's words. Be concise, sharp, witty, and highly analytical. Talk like a real, brilliant human advisor (Jarvis style). "
-            f"3. YOU HAVE LIVE INTERNET ACCESS. If the user asks about news, weather, sports, or current events, YOU MUST use the Google Search tool to fetch live data and summarize it sharply. "
-            f"4. If the user speaks Egyptian Arabic, reply in natural, conversational Egyptian Arabic. If English, reply in sophisticated British English. "
-            f"5. Active Cognitive Memory:\n{memory_context}"
+            f"You have live internet access via Google Search tool. If asked about current events, weather, or time, use it. "
+            f"Maintain a sharp, polite, concise tone. "
+            f"Active Memory Context:\n{memory_context}"
         )
 
         tools = self._build_tools_schema()
@@ -155,7 +153,7 @@ class JinnyAssistantCore:
                 )
                 return {
                     "intent": executed_tools[0]["tool"].upper(),
-                    "speech_output": followup_response.text or "Command executed, sir.",
+                    "speech_output": followup_response.text or "Command executed.",
                     "action_result": executed_tools
                 }
 
@@ -167,4 +165,4 @@ class JinnyAssistantCore:
 
         except Exception as e:
             logger.error(f"Inference error: {e}", exc_info=True)
-            return {"intent": "ERROR", "speech_output": "I encountered a diagnostic anomaly in my neural net."}
+            return {"intent": "ERROR", "speech_output": "I encountered a diagnostic anomaly."}
